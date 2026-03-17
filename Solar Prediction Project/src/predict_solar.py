@@ -1,11 +1,18 @@
 import pandas as pd
 import joblib
+import os
 
 # -----------------------------
 # STEP 1: LOAD TRAINED MODEL
 # -----------------------------
 
-model = joblib.load("models/solar_prediction_model.pkl")
+model_path = os.path.join(
+    os.path.dirname(__file__),   # gets folder of app.py
+    "models",
+    "solar_prediction_model.pkl"
+)
+
+model = joblib.load(model_path)
 
 # Load feature info if available
 try:
