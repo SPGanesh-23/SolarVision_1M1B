@@ -4,7 +4,7 @@ import io
 import csv
 from datetime import datetime
 
-from weather_api import geocode_city, get_current_weather, get_forecast, search_cities
+from weather_api import geocode_city, reverse_geocode, get_current_weather, get_forecast, search_cities
 from predictor import predict_radiation, predict_hourly
 from metrics import compute_full_metrics, calculate_panel_power, calculate_panel_irradiance
 
@@ -29,8 +29,8 @@ def predict():
 
         # Validate inputs
         city = data.get("city", "").strip()
-        if not city:
-            return jsonify({"error": "City name is required"}), 400
+        input_lat = data.get("lat")
+        input_lon = data.get("lon")
 
         try:
             panel_area = float(data.get("panel_area", 10))
@@ -50,13 +50,32 @@ def predict():
         if forecast_days not in [1, 3, 5]:
             forecast_days = 3
 
-        # Geocode city
-        location = geocode_city(city)
-        if location is None:
-            return jsonify({"error": f"City '{city}' not found. Please check the spelling."}), 404
-
-        lat = location["lat"]
-        lon = location["lon"]
+        # Determine lat/lon — prefer direct coordinates from map, fallback to geocoding city
+        if input_lat is not None and input_lon is not None:
+            try:
+                lat = float(input_lat)
+                lon = float(input_lon)
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid latitude/longitude values"}), 400
+            if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+                return jsonify({"error": "Latitude must be -90 to 90, longitude -180 to 180"}), 400
+            # If no city name provided, reverse geocode to get one
+            if not city:
+                rev = reverse_geocode(lat, lon)
+                city = rev["city"]
+                display_name = rev["display_name"]
+            else:
+                display_name = city
+        elif city:
+            # Fallback: geocode from city name (existing behavior)
+            location = geocode_city(city)
+            if location is None:
+                return jsonify({"error": f"City '{city}' not found. Please check the spelling."}), 404
+            lat = location["lat"]
+            lon = location["lon"]
+            display_name = location["display_name"]
+        else:
+            return jsonify({"error": "Please select a location on the map or enter a city name."}), 400
 
         # Get current weather
         current_weather = get_current_weather(lat, lon)
@@ -116,7 +135,7 @@ def predict():
         # Location info
         full_metrics["location"] = {
             "city": city,
-            "display_name": location["display_name"],
+            "display_name": display_name,
             "lat": round(lat, 4),
             "lon": round(lon, 4),
         }

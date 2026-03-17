@@ -43,6 +43,39 @@ def geocode_city(city_name):
         return None
 
 
+def reverse_geocode(lat, lon):
+    """Convert latitude/longitude into a city name and display address."""
+    cache_key = f"rev_{lat:.4f}_{lon:.4f}"
+    if cache_key in _geo_cache:
+        return _geo_cache[cache_key]
+
+    try:
+        geolocator = Nominatim(user_agent="solar_prediction_app_v2", timeout=10)
+        location = geolocator.reverse((lat, lon), exactly_one=True, language="en")
+        if location is None:
+            return {"city": f"{lat:.4f}, {lon:.4f}", "display_name": f"{lat:.4f}, {lon:.4f}"}
+
+        address = location.raw.get("address", {})
+        # Try to extract city name from address components
+        city = (
+            address.get("city")
+            or address.get("town")
+            or address.get("village")
+            or address.get("county")
+            or address.get("state")
+            or f"{lat:.4f}, {lon:.4f}"
+        )
+        result = {
+            "city": city,
+            "display_name": location.address,
+        }
+        _geo_cache[cache_key] = result
+        return result
+    except Exception as e:
+        print(f"Reverse geocoding error: {e}")
+        return {"city": f"{lat:.4f}, {lon:.4f}", "display_name": f"{lat:.4f}, {lon:.4f}"}
+
+
 def _get_cached(cache_key):
     """Get cached API response if it's still fresh."""
     if cache_key in _weather_cache:

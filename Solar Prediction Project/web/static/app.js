@@ -9,6 +9,8 @@ let forecastDays = 3;
 let radiationChart = null;
 let powerChart = null;
 let energyChart = null;
+let selectedLat = null;
+let selectedLon = null;
 
 // --- DOM Elements ---
 const form = document.getElementById('prediction-form');
@@ -20,6 +22,10 @@ const resultsSection = document.getElementById('results-section');
 const themeToggle = document.getElementById('theme-toggle');
 const cityInput = document.getElementById('city-input');
 const suggestionsList = document.getElementById('city-suggestions');
+const mapCoordsDisplay = document.getElementById('map-coords');
+const selectedLatInput = document.getElementById('selected-lat');
+const selectedLonInput = document.getElementById('selected-lon');
+const geoBtn = document.getElementById('use-location-btn');
 
 // Sliders
 const panelAreaSlider = document.getElementById('panel-area');
@@ -105,8 +111,11 @@ cityInput.addEventListener('input', () => {
 
 suggestionsList.addEventListener('click', (e) => {
     if (e.target.tagName === 'LI') {
-        cityInput.value = e.target.dataset.city;
+        const selectedCity = e.target.dataset.city;
+        cityInput.value = selectedCity;
         suggestionsList.classList.remove('show');
+        // Sync map to the selected city
+        syncMapToCity(selectedCity);
     }
 });
 
@@ -117,6 +126,161 @@ document.addEventListener('click', (e) => {
 });
 
 // ==========================================
+// LEAFLET MAP INITIALIZATION
+// ==========================================
+// Default center: New Delhi, India
+const DEFAULT_LAT = 20.5937;
+const DEFAULT_LON = 78.9629;
+const DEFAULT_ZOOM = 5;
+
+const map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LON], DEFAULT_ZOOM);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 18,
+}).addTo(map);
+
+// Draggable marker
+let mapMarker = L.marker([DEFAULT_LAT, DEFAULT_LON], {
+    draggable: true,
+    autoPan: true,
+}).addTo(map);
+
+// --- Map Click: Move marker & capture coordinates ---
+map.on('click', function(e) {
+    const { lat, lng } = e.latlng;
+    mapMarker.setLatLng([lat, lng]);
+    setSelectedCoords(lat, lng);
+    reverseGeocodeAndFill(lat, lng);
+});
+
+// --- Marker Drag: Capture coordinates ---
+mapMarker.on('dragend', function(e) {
+    const pos = mapMarker.getLatLng();
+    setSelectedCoords(pos.lat, pos.lng);
+    reverseGeocodeAndFill(pos.lat, pos.lng);
+});
+
+/**
+ * Set selected coordinates in state and hidden form fields.
+ */
+function setSelectedCoords(lat, lon) {
+    selectedLat = lat;
+    selectedLon = lon;
+    selectedLatInput.value = lat.toFixed(6);
+    selectedLonInput.value = lon.toFixed(6);
+    mapCoordsDisplay.textContent = `📍 ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`;
+    mapCoordsDisplay.classList.add('active');
+}
+
+/**
+ * Clear selected coordinates (e.g., when user types a city manually)
+ */
+function clearSelectedCoords() {
+    selectedLat = null;
+    selectedLon = null;
+    selectedLatInput.value = '';
+    selectedLonInput.value = '';
+    mapCoordsDisplay.textContent = 'Click on the map to select a location';
+    mapCoordsDisplay.classList.remove('active');
+}
+
+/**
+ * Reverse geocode coordinates using Nominatim and fill the city input.
+ */
+let reverseGeoTimer;
+function reverseGeocodeAndFill(lat, lon) {
+    clearTimeout(reverseGeoTimer);
+    reverseGeoTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`,
+                { headers: { 'Accept-Language': 'en' } }
+            );
+            const data = await res.json();
+            if (data && data.address) {
+                const city = data.address.city
+                    || data.address.town
+                    || data.address.village
+                    || data.address.county
+                    || data.address.state
+                    || '';
+                if (city) {
+                    cityInput.value = city;
+                }
+            }
+        } catch (err) {
+            console.warn('Reverse geocode failed:', err);
+        }
+    }, 300);
+}
+
+// ==========================================
+// USE CURRENT LOCATION (Browser Geolocation)
+// ==========================================
+geoBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+        showError('Geolocation is not supported by your browser.');
+        return;
+    }
+    geoBtn.classList.add('loading');
+    geoBtn.textContent = '⏳ Locating...';
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            map.setView([lat, lon], 12);
+            mapMarker.setLatLng([lat, lon]);
+            setSelectedCoords(lat, lon);
+            reverseGeocodeAndFill(lat, lon);
+            geoBtn.classList.remove('loading');
+            geoBtn.textContent = '📍 Use Current Location';
+        },
+        (error) => {
+            geoBtn.classList.remove('loading');
+            geoBtn.textContent = '📍 Use Current Location';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    showError('Location permission denied. Please allow location access in your browser settings.');
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    showError('Location information is unavailable.');
+                    break;
+                case error.TIMEOUT:
+                    showError('Location request timed out. Please try again.');
+                    break;
+                default:
+                    showError('An unknown error occurred while getting your location.');
+            }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+});
+
+// ==========================================
+// CITY INPUT → MAP SYNC
+// ==========================================
+// When user selects a city from autocomplete, pan the map to that city
+function syncMapToCity(cityName) {
+    // Use Nominatim to forward geocode and move marker
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}&limit=1`,
+        { headers: { 'Accept-Language': 'en' } }
+    )
+    .then(res => res.json())
+    .then(results => {
+        if (results && results.length > 0) {
+            const lat = parseFloat(results[0].lat);
+            const lon = parseFloat(results[0].lon);
+            map.setView([lat, lon], 10);
+            mapMarker.setLatLng([lat, lon]);
+            setSelectedCoords(lat, lon);
+        }
+    })
+    .catch(err => console.warn('Forward geocode for map sync failed:', err));
+}
+
+// ==========================================
 // PREDICTION FORM SUBMIT
 // ==========================================
 form.addEventListener('submit', async (e) => {
@@ -124,8 +288,8 @@ form.addEventListener('submit', async (e) => {
     errorBox.style.display = 'none';
 
     const city = cityInput.value.trim();
-    if (!city) {
-        showError('Please enter a city name.');
+    if (!city && selectedLat === null) {
+        showError('Please select a location on the map or enter a city name.');
         return;
     }
 
@@ -139,6 +303,12 @@ form.addEventListener('submit', async (e) => {
             panel_tilt: parseFloat(panelTiltSlider.value),
             forecast_days: forecastDays,
         };
+
+        // Include lat/lon if map was used
+        if (selectedLat !== null && selectedLon !== null) {
+            payload.lat = selectedLat;
+            payload.lon = selectedLon;
+        }
 
         const res = await fetch('/predict', {
             method: 'POST',

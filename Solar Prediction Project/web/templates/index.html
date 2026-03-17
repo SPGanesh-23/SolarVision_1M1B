@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -41,15 +43,34 @@
             </h2>
 
             <form id="prediction-form">
+                <!-- Location Label -->
+                <p class="location-label">📍 Select your location on the map <strong>OR</strong> type a city name</p>
+
                 <!-- City Input -->
                 <div class="form-group">
                     <label for="city-input">City</label>
                     <div class="autocomplete-wrapper">
                         <input type="text" id="city-input" name="city" placeholder="Type a city name..."
-                            autocomplete="off" required>
+                            autocomplete="off">
                         <ul id="city-suggestions" class="suggestions-list"></ul>
                     </div>
                 </div>
+
+                <!-- Interactive Map -->
+                <div class="form-group map-group">
+                    <div class="map-header">
+                        <label>Interactive Map</label>
+                        <button type="button" id="use-location-btn" class="geo-btn" title="Use your current location">
+                            📍 Use Current Location
+                        </button>
+                    </div>
+                    <div id="map"></div>
+                    <p class="map-coords" id="map-coords">Click on the map to select a location</p>
+                </div>
+
+                <!-- Hidden lat/lon fields -->
+                <input type="hidden" id="selected-lat" name="lat">
+                <input type="hidden" id="selected-lon" name="lon">
 
                 <!-- Panel Specs -->
                 <div class="form-row">
@@ -225,6 +246,8 @@
         <p>SolarVista © 2026 — Powered by Machine Learning & OpenWeatherMap</p>
     </footer>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 
