@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolarVision — Solar Power Prediction</title>
+    <meta name="description"
+        content="Predict solar panel power output, hourly energy forecasts, and CO₂ savings for any city worldwide.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <!-- ===== HEADER ===== -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">☀️</span>
+                <h1>SolarVision</h1>
+            </div>
+            <p class="tagline">Intelligent Solar Power Predictions</p>
+        </div>
+        <div class="header-right">
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="container">
+        <!-- INPUT PANEL -->
+        <section class="input-panel glass-card" id="input-panel">
+            <h2 class="section-title">
+                <span class="section-icon">📍</span>
+                Configure Your Solar Setup
+            </h2>
+
+            <form id="prediction-form">
+                <!-- City Input -->
+                <div class="form-group">
+                    <label for="city-input">City</label>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="city-input" name="city" placeholder="Type a city name..."
+                            autocomplete="off" required>
+                        <ul id="city-suggestions" class="suggestions-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Panel Specs -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="panel-area">
+                            Panel Area
+                            <span class="slider-value" id="area-value">10 m²</span>
+                        </label>
+                        <input type="range" id="panel-area" name="panel_area" min="1" max="500" value="10" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="panel-efficiency">
+                            Efficiency
+                            <span class="slider-value" id="efficiency-value">18%</span>
+                        </label>
+                        <input type="range" id="panel-efficiency" name="panel_efficiency" min="5" max="45" value="18"
+                            step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="panel-tilt">
+                            Tilt Angle
+                            <span class="slider-value" id="tilt-value">30°</span>
+                        </label>
+                        <input type="range" id="panel-tilt" name="panel_tilt" min="0" max="90" value="30" step="1">
+                    </div>
+                </div>
+
+                <!-- Forecast Days -->
+                <div class="form-group">
+                    <label>Forecast Period</label>
+                    <div class="day-selector">
+                        <button type="button" class="day-btn" data-days="1">1 Day</button>
+                        <button type="button" class="day-btn active" data-days="3">3 Days</button>
+                        <button type="button" class="day-btn" data-days="5">5 Days</button>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="predict-btn" id="predict-btn">
+                    <span class="btn-text">⚡ Generate Prediction</span>
+                    <span class="btn-loader" style="display:none;">
+                        <span class="spinner"></span> Analyzing...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Error Message -->
+            <div id="error-message" class="error-box" style="display:none;"></div>
+        </section>
+
+        <!-- ===== RESULTS SECTION (hidden until prediction) ===== -->
+        <section id="results-section" class="results-section" style="display:none;">
+
+            <!-- Location Header -->
+            <div class="location-header glass-card" id="location-header">
+                <div class="location-info">
+                    <h2 id="result-city"></h2>
+                    <p id="result-coords"></p>
+                </div>
+                <div class="current-weather" id="current-weather"></div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card glass-card solar-card" id="card-radiation">
+                    <div class="metric-icon">☀️</div>
+                    <div class="metric-value" id="val-radiation">—</div>
+                    <div class="metric-label">Peak Solar Radiation</div>
+                    <div class="metric-unit">W/m²</div>
+                </div>
+                <div class="metric-card glass-card power-card" id="card-power">
+                    <div class="metric-icon">⚡</div>
+                    <div class="metric-value" id="val-power">—</div>
+                    <div class="metric-label">Peak Panel Power</div>
+                    <div class="metric-unit">W</div>
+                </div>
+                <div class="metric-card glass-card energy-card" id="card-energy">
+                    <div class="metric-icon">🔋</div>
+                    <div class="metric-value" id="val-energy">—</div>
+                    <div class="metric-label">Total Energy</div>
+                    <div class="metric-unit">kWh</div>
+                </div>
+                <div class="metric-card glass-card co2-card" id="card-co2">
+                    <div class="metric-icon">🌱</div>
+                    <div class="metric-value" id="val-co2">—</div>
+                    <div class="metric-label">CO₂ Saved</div>
+                    <div class="metric-unit">kg</div>
+                </div>
+            </div>
+
+            <!-- Environmental Impact -->
+            <div class="env-impact glass-card" id="env-impact">
+                <h3>🌍 Environmental Impact</h3>
+                <div class="env-grid">
+                    <div class="env-item">
+                        <span class="env-icon">🌳</span>
+                        <span class="env-value" id="env-trees">—</span>
+                        <span class="env-label">Trees Equivalent</span>
+                    </div>
+                    <div class="env-item">
+                        <span class="env-icon">🚗</span>
+                        <span class="env-value" id="env-cars">—</span>
+                        <span class="env-label">Cars Off Road (days)</span>
+                    </div>
+                    <div class="env-item">
+                        <span class="env-icon">📱</span>
+                        <span class="env-value" id="env-phones">—</span>
+                        <span class="env-label">Phone Charges</span>
+                    </div>
+                    <div class="env-item">
+                        <span class="env-icon">💡</span>
+                        <span class="env-value" id="env-led">—</span>
+                        <span class="env-label">LED Bulb Hours</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peak Solar Hour -->
+            <div class="peak-hour glass-card" id="peak-section">
+                <h3>🏆 Peak Solar Hour</h3>
+                <div class="peak-info">
+                    <span class="peak-time" id="peak-time">—</span>
+                    <span class="peak-radiation" id="peak-radiation">— W/m²</span>
+                </div>
+                <p class="peak-tip" id="peak-tip"></p>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="chart-container glass-card">
+                    <h3>☀️ Hourly Solar Radiation</h3>
+                    <canvas id="radiation-chart"></canvas>
+                </div>
+                <div class="chart-container glass-card">
+                    <h3>⚡ Hourly Power Output</h3>
+                    <canvas id="power-chart"></canvas>
+                </div>
+                <div class="chart-container glass-card">
+                    <h3>🔋 Cumulative Energy Production</h3>
+                    <canvas id="energy-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Daily Summary Table -->
+            <div class="daily-summary glass-card" id="daily-summary">
+                <h3>📊 Daily Summary</h3>
+                <div class="table-wrapper">
+                    <table id="daily-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Energy (kWh)</th>
+                                <th>CO₂ Saved (kg)</th>
+                                <th>Peak Hour</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <div class="download-section">
+                <button id="download-csv" class="download-btn">
+                    📥 Download CSV Report
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="app-footer">
+        <p>SolarVista © 2026 — Powered by Machine Learning & OpenWeatherMap</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+flask
+joblib
+requests
+pandas
+numpy
+scikit-learn
+geopy
+xgboost
+reportlab
