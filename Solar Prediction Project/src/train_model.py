@@ -25,11 +25,20 @@ df = pd.read_csv("data/clean_solar_dataset.csv")
 print(f"Dataset shape: {df.shape}")
 print(f"Columns: {list(df.columns)}")
 
+city_labels = df["city"] if "city" in df.columns else None
+
+# One-hot encode the 'city' column if it exists
+if "city" in df.columns:
+    df = pd.get_dummies(df, columns=["city"], drop_first=False)
+    for col in df.columns:
+        if col.startswith("city_"):
+            df[col] = df[col].astype(int)
+
 # -----------------------------
 # STEP 2: DEFINE FEATURES & TARGET
 # -----------------------------
 
-FEATURE_COLUMNS = [
+BASE_FEATURE_COLUMNS = [
     "temperature",
     "wind_speed",
     "humidity",
@@ -43,8 +52,11 @@ FEATURE_COLUMNS = [
     "hour_of_day"
 ]
 
+city_cols = [c for c in df.columns if c.startswith("city_")]
+FEATURE_COLUMNS = BASE_FEATURE_COLUMNS + city_cols
+
 # Handle case where new columns might not exist yet
-for col in FEATURE_COLUMNS:
+for col in BASE_FEATURE_COLUMNS:
     if col not in df.columns:
         if col == "longitude":
             df["longitude"] = 78.4867  # Hyderabad default
@@ -59,7 +71,7 @@ y = df["solar_radiation"]
 # -----------------------------
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y, test_size=0.2, random_state=42, stratify=city_labels
 )
 
 print(f"Training samples: {len(X_train)}")

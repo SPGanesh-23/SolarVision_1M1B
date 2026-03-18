@@ -40,7 +40,8 @@ df = df[[
     "longitude",
     "day_of_year",
     "month",
-    "hour_of_day"
+    "hour_of_day",
+    "city"
 ]]
 
 df.to_csv("data/clean_solar_dataset.csv", index=False)

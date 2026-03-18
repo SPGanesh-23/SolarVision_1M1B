@@ -67,7 +67,7 @@ def _solar_hour_weight(hour, sunrise_hour, sunset_hour):
     return max(0, weight)
 
 
-def predict_radiation(weather_data, lat, lon, day_of_year, month, hour_of_day):
+def predict_radiation(weather_data, lat, lon, day_of_year, month, hour_of_day, city="Unknown"):
     """
     Predict solar radiation for a single data point.
     Returns W/m² (converted from model's kWh/m²/day output).
@@ -83,8 +83,16 @@ def predict_radiation(weather_data, lat, lon, day_of_year, month, hour_of_day):
         "longitude": lon,
         "day_of_year": day_of_year,
         "month": month,
-        "hour_of_day": hour_of_day
+        "hour_of_day": hour_of_day,
+        "city": city
     }])
+
+    # Apply one-hot encoding for city and ensure all feature columns match
+    data = pd.get_dummies(data, columns=["city"], drop_first=False)
+    for col in FEATURE_COLUMNS:
+        if col not in data.columns:
+            data[col] = 0
+    data = data[FEATURE_COLUMNS]
 
     # Model predicts kWh/m²/day (daily average)
     daily_avg = model.predict(data)[0]
@@ -111,7 +119,7 @@ def predict_radiation(weather_data, lat, lon, day_of_year, month, hour_of_day):
     return round(radiation_wm2, 2)
 
 
-def predict_hourly(forecast_data, lat, lon):
+def predict_hourly(forecast_data, lat, lon, city="Unknown"):
     """
     Generate hourly solar radiation predictions for forecast data.
     Returns list of dicts with datetime, radiation, and weather info.
@@ -130,7 +138,8 @@ def predict_hourly(forecast_data, lat, lon):
             lat=lat, lon=lon,
             day_of_year=day_of_year,
             month=month,
-            hour_of_day=hour
+            hour_of_day=hour,
+            city=city
         )
 
         results.append({

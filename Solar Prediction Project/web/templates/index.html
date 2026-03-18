@@ -72,8 +72,18 @@
                 <input type="hidden" id="selected-lat" name="lat">
                 <input type="hidden" id="selected-lon" name="lon">
 
-                <!-- Panel Specs -->
-                <div class="form-row">
+                <!-- Specs Setup Mode Toggle -->
+                <div class="specs-toggle">
+                    <label class="toggle-label">
+                        <input type="radio" name="specs_mode" value="advanced" checked> Advanced Setup
+                    </label>
+                    <label class="toggle-label">
+                        <input type="radio" name="specs_mode" value="simplified"> Quick Setup
+                    </label>
+                </div>
+
+                <!-- Panel Specs (Advanced) -->
+                <div id="advanced-specs" class="form-row">
                     <div class="form-group">
                         <label for="panel-area">
                             Panel Area
@@ -95,6 +105,61 @@
                             <span class="slider-value" id="tilt-value">30°</span>
                         </label>
                         <input type="range" id="panel-tilt" name="panel_tilt" min="0" max="90" value="30" step="1">
+                    </div>
+                    <div class="form-group full-width-group">
+                        <label for="panel-count-adv">
+                            Number of Panels
+                            <span class="slider-value" id="count-value-adv">6</span>
+                        </label>
+                        <input type="range" id="panel-count-adv" name="panel_count_adv" min="1" max="500" value="6" step="1">
+                    </div>
+                </div>
+
+                <!-- Panel Specs (Simplified) -->
+                <div id="simplified-specs" class="form-row simplified-inputs" style="display:none;">
+                    <div class="form-group tooltip-container">
+                        <label for="panel-orientation">
+                            Roof Orientation
+                            <span class="info-icon" title="Direction your roof faces. South is usually optimal.">ℹ️</span>
+                        </label>
+                        <select id="panel-orientation" name="panel_orientation" class="custom-select">
+                            <option value="">Select (Optional)</option>
+                            <option value="N">North</option>
+                            <option value="E">East</option>
+                            <option value="S">South</option>
+                            <option value="W">West</option>
+                        </select>
+                    </div>
+                    <div class="form-group tooltip-container">
+                        <label for="panel-tilt-simple">
+                            Roof Tilt
+                            <span class="info-icon" title="Angle of your roof. Medium (approx 30°) is common.">ℹ️</span>
+                        </label>
+                        <select id="panel-tilt-simple" name="panel_tilt_simple" class="custom-select">
+                            <option value="">Select (Optional)</option>
+                            <option value="Flat">Flat</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Steep">Steep</option>
+                        </select>
+                    </div>
+                    <div class="form-group tooltip-container">
+                        <label for="panel-count">
+                            Number of Panels
+                            <span class="info-icon" title="Total number of solar panels. Average panel is ~1.6m².">ℹ️</span>
+                        </label>
+                        <input type="number" id="panel-count" name="panel_count" min="1" max="1000" placeholder="e.g., 10" class="custom-input">
+                    </div>
+                    <div class="form-group tooltip-container">
+                        <label for="panel-age">
+                            Panel Age Range
+                            <span class="info-icon" title="Older panels lose a small percentage of efficiency over time.">ℹ️</span>
+                        </label>
+                        <select id="panel-age" name="panel_age" class="custom-select">
+                            <option value="">Select (Optional)</option>
+                            <option value="0-5">0-5 yrs</option>
+                            <option value="5-10">5-10 yrs</option>
+                            <option value="10+">10+ yrs</option>
+                        </select>
                     </div>
                 </div>
 
@@ -129,6 +194,9 @@
                 <div class="location-info">
                     <h2 id="result-city"></h2>
                     <p id="result-coords"></p>
+                    <div class="confidence-badge" id="confidence-badge" style="display:none;">
+                        Confidence: <strong id="confidence-level">Medium (Default Assumptions)</strong>
+                    </div>
                 </div>
                 <div class="current-weather" id="current-weather"></div>
             </div>

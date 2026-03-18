@@ -1,18 +1,11 @@
 import pandas as pd
 import joblib
-import os
 
 # -----------------------------
 # STEP 1: LOAD TRAINED MODEL
 # -----------------------------
 
-model_path = os.path.join(
-    os.path.dirname(__file__),   # gets folder of app.py
-    "models",
-    "solar_prediction_model.pkl"
-)
-
-model = joblib.load(model_path)
+model = joblib.load("models/solar_prediction_model.pkl")
 
 # Load feature info if available
 try:
@@ -54,6 +47,13 @@ if "pressure" not in forecast_df.columns:
 
 forecast_df["latitude"] = 17.3850  # Hyderabad latitude
 forecast_df["longitude"] = 78.4867  # Hyderabad longitude
+forecast_df["city"] = "Hyderabad"  # Default for testing
+
+forecast_df = pd.get_dummies(forecast_df, columns=["city"], drop_first=False)
+
+for col in FEATURE_COLUMNS:
+    if col not in forecast_df.columns:
+        forecast_df[col] = 0
 
 # -----------------------------
 # STEP 5: SELECT FEATURES

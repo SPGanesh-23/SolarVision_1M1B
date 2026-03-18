@@ -32,10 +32,13 @@ def predict():
         input_lat = data.get("lat")
         input_lon = data.get("lon")
 
+        panel_specs = data.get("panel_specs", {})
+
         try:
-            panel_area = float(data.get("panel_area", 10))
-            panel_efficiency = float(data.get("panel_efficiency", 18))
-            panel_tilt = float(data.get("panel_tilt", 30))
+            panel_area = float(panel_specs.get("area_m2", 1.6))
+            panel_efficiency = float(panel_specs.get("efficiency_pct", 18.0))
+            panel_tilt = float(panel_specs.get("tilt_deg", 30))
+            panel_azimuth = float(panel_specs.get("azimuth_deg", 180))
             forecast_days = int(data.get("forecast_days", 3))
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid numeric input"}), 400
@@ -98,25 +101,26 @@ def predict():
             lat=lat, lon=lon,
             day_of_year=now.timetuple().tm_yday,
             month=now.month,
-            hour_of_day=now.hour + (current_weather.get("timezone_offset", 0) / 3600)
+            hour_of_day=now.hour + (current_weather.get("timezone_offset", 0) / 3600),
+            city=city
         )
 
-        current_power = calculate_panel_power(current_radiation, panel_area, panel_efficiency, panel_tilt)
-        current_irradiance = calculate_panel_irradiance(current_radiation, panel_tilt)
+        current_power = calculate_panel_power(current_radiation, panel_area, panel_efficiency, panel_tilt, panel_azimuth)
+        current_irradiance = calculate_panel_irradiance(current_radiation, panel_tilt, panel_azimuth)
 
         # Hourly predictions
-        hourly_predictions = predict_hourly(forecast, lat, lon)
+        hourly_predictions = predict_hourly(forecast, lat, lon, city=city)
 
         # Add panel metrics to hourly
         for point in hourly_predictions:
             point["panel_power_w"] = calculate_panel_power(
-                point["radiation_wm2"], panel_area, panel_efficiency, panel_tilt
+                point["radiation_wm2"], panel_area, panel_efficiency, panel_tilt, panel_azimuth
             )
             point["energy_wh"] = point["panel_power_w"]  # 1-hour interval
 
         # Compute full metrics
         full_metrics = compute_full_metrics(
-            hourly_predictions, panel_area, panel_efficiency, panel_tilt
+            hourly_predictions, panel_area, panel_efficiency, panel_tilt, panel_azimuth
         )
 
         # Override current with actual current weather data
@@ -144,6 +148,7 @@ def predict():
             "area_m2": panel_area,
             "efficiency_pct": panel_efficiency,
             "tilt_deg": panel_tilt,
+            "azimuth_deg": panel_azimuth,
         }
 
         return jsonify(full_metrics)

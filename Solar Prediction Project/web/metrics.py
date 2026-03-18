@@ -7,16 +7,19 @@ import numpy as np
 import math
 
 
-def calculate_panel_irradiance(radiation_wm2, tilt_deg):
+def calculate_panel_irradiance(radiation_wm2, tilt_deg, azimuth_deg=180.0):
     """
-    Calculate effective irradiance on a tilted panel.
-    Applies cosine correction for panel tilt angle.
+    Calculate effective irradiance on a tilted/oriented panel.
+    Applies cosine correction for panel tilt angle and a modifier for azimuth.
     """
     tilt_rad = math.radians(tilt_deg)
-    return radiation_wm2 * math.cos(tilt_rad)
+    # Azimuth modifier: South=1.0, East/West=0.8, North=0.6 (rough approximation)
+    az_rad = math.radians(azimuth_deg - 180)
+    az_modifier = 0.8 + 0.2 * math.cos(az_rad)
+    return radiation_wm2 * math.cos(tilt_rad) * az_modifier
 
 
-def calculate_panel_power(radiation_wm2, area_m2, efficiency_pct, tilt_deg):
+def calculate_panel_power(radiation_wm2, area_m2, efficiency_pct, tilt_deg, azimuth_deg=180.0):
     """
     Calculate panel power output in Watts.
     
@@ -25,11 +28,12 @@ def calculate_panel_power(radiation_wm2, area_m2, efficiency_pct, tilt_deg):
         area_m2: Panel area in m²
         efficiency_pct: Panel efficiency as percentage (e.g., 18 for 18%)
         tilt_deg: Panel tilt angle in degrees
+        azimuth_deg: Panel orientation azimuth in degrees (180=South)
     
     Returns:
         Power output in Watts
     """
-    irradiance = calculate_panel_irradiance(radiation_wm2, tilt_deg)
+    irradiance = calculate_panel_irradiance(radiation_wm2, tilt_deg, azimuth_deg)
     efficiency = efficiency_pct / 100.0
     power = irradiance * area_m2 * efficiency
     return max(0, round(power, 2))
@@ -103,7 +107,7 @@ def find_peak_solar_hour(hourly_data):
     }
 
 
-def compute_full_metrics(hourly_predictions, panel_area, panel_efficiency, panel_tilt):
+def compute_full_metrics(hourly_predictions, panel_area, panel_efficiency, panel_tilt, panel_azimuth=180.0):
     """
     Compute all derived metrics from hourly radiation predictions.
     
@@ -121,7 +125,8 @@ def compute_full_metrics(hourly_predictions, panel_area, panel_efficiency, panel
             point["radiation_wm2"],
             panel_area,
             panel_efficiency,
-            panel_tilt
+            panel_tilt,
+            panel_azimuth
         )
         
         point_with_metrics = {
@@ -168,8 +173,8 @@ def compute_full_metrics(hourly_predictions, panel_area, panel_efficiency, panel
         current_point = hourly_predictions[0]
     
     current_radiation = current_point["radiation_wm2"] if current_point else 0
-    current_power = calculate_panel_power(current_radiation, panel_area, panel_efficiency, panel_tilt)
-    current_irradiance = calculate_panel_irradiance(current_radiation, panel_tilt)
+    current_power = calculate_panel_power(current_radiation, panel_area, panel_efficiency, panel_tilt, panel_azimuth)
+    current_irradiance = calculate_panel_irradiance(current_radiation, panel_tilt, panel_azimuth)
     
     return {
         "current": {

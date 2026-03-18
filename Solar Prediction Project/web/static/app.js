@@ -27,13 +27,41 @@ const selectedLatInput = document.getElementById('selected-lat');
 const selectedLonInput = document.getElementById('selected-lon');
 const geoBtn = document.getElementById('use-location-btn');
 
-// Sliders
+// Sliders (Advanced)
 const panelAreaSlider = document.getElementById('panel-area');
 const panelEffSlider = document.getElementById('panel-efficiency');
 const panelTiltSlider = document.getElementById('panel-tilt');
+const panelCountAdvSlider = document.getElementById('panel-count-adv');
 const areaValue = document.getElementById('area-value');
 const effValue = document.getElementById('efficiency-value');
 const tiltValue = document.getElementById('tilt-value');
+const countValueAdv = document.getElementById('count-value-adv');
+
+// Panel Inputs (Simplified)
+const panelOrientationSelect = document.getElementById('panel-orientation');
+const panelTiltSelect = document.getElementById('panel-tilt-simple');
+const panelCountInput = document.getElementById('panel-count');
+const panelAgeSelect = document.getElementById('panel-age');
+
+// Toggle Elements
+const specsToggleRadios = document.querySelectorAll('input[name="specs_mode"]');
+const advancedSpecsDiv = document.getElementById('advanced-specs');
+const simplifiedSpecsDiv = document.getElementById('simplified-specs');
+
+// ==========================================
+// SETUP MODE TOGGLE
+// ==========================================
+specsToggleRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if (e.target.value === 'advanced') {
+            advancedSpecsDiv.style.display = 'grid';
+            simplifiedSpecsDiv.style.display = 'none';
+        } else {
+            advancedSpecsDiv.style.display = 'none';
+            simplifiedSpecsDiv.style.display = 'grid'; // .form-row uses grid
+        }
+    });
+});
 
 // ==========================================
 // THEME TOGGLE
@@ -68,6 +96,83 @@ panelEffSlider.addEventListener('input', () => {
 panelTiltSlider.addEventListener('input', () => {
     tiltValue.textContent = `${panelTiltSlider.value}°`;
 });
+if (panelCountAdvSlider) {
+    panelCountAdvSlider.addEventListener('input', () => {
+        countValueAdv.textContent = `${panelCountAdvSlider.value}`;
+    });
+}
+
+// ==========================================
+// PANEL SPECS PARSER
+// ==========================================
+function getPanelSpecs() {
+    const isAdvanced = document.querySelector('input[name="specs_mode"]:checked').value === 'advanced';
+    const badge = document.getElementById('confidence-badge');
+    const badgeText = document.getElementById('confidence-level');
+
+    if (isAdvanced) {
+        if (badge && badgeText) {
+            badge.style.display = 'inline-block';
+            badge.className = 'confidence-badge high-confidence';
+            badgeText.textContent = 'High (Advanced Details)';
+        }
+        return {
+            area_m2: parseFloat(panelAreaSlider.value),
+            efficiency_pct: parseFloat(panelEffSlider.value),
+            tilt_deg: parseFloat(panelTiltSlider.value),
+            azimuth_deg: 180 // Default south for advanced sliders (can be added later if needed)
+        };
+    }
+
+    // Simplified Mode Logic
+    let providedDetails = false;
+    
+    // Default assumptions
+    let area_m2 = 1.6; // 1 panel
+    let tilt_deg = 30; // Medium
+    let efficiency_pct = 18.0; // 0-5 yrs
+    let azimuth_deg = 180; // South
+    
+    // Number of panels
+    const countVal = parseInt(panelCountInput.value);
+    if (!isNaN(countVal) && countVal > 0) {
+        area_m2 = countVal * 1.6;
+        providedDetails = true;
+    }
+    
+    // Tilt
+    const tiltVal = panelTiltSelect.value;
+    if (tiltVal === 'Flat') { tilt_deg = 0; providedDetails = true; }
+    else if (tiltVal === 'Steep') { tilt_deg = 60; providedDetails = true; }
+    else if (tiltVal === 'Medium') { tilt_deg = 30; providedDetails = true; }
+    
+    // Orientation
+    const orientVal = panelOrientationSelect.value;
+    if (orientVal === 'N') { azimuth_deg = 0; providedDetails = true; }
+    else if (orientVal === 'E') { azimuth_deg = 90; providedDetails = true; }
+    else if (orientVal === 'S') { azimuth_deg = 180; providedDetails = true; }
+    else if (orientVal === 'W') { azimuth_deg = 270; providedDetails = true; }
+
+    // Age / Efficiency
+    const ageVal = panelAgeSelect.value;
+    if (ageVal === '0-5') { efficiency_pct = 18.0; providedDetails = true; }
+    else if (ageVal === '5-10') { efficiency_pct = 16.2; providedDetails = true; }
+    else if (ageVal === '10+') { efficiency_pct = 14.4; providedDetails = true; }
+
+    // Update confidence badge for simplified mode
+    if (badge && badgeText) {
+        badge.style.display = 'inline-block';
+        if (providedDetails) {
+            badge.className = 'confidence-badge high-confidence';
+            badgeText.textContent = 'High (Custom Details)';
+        } else {
+            badge.className = 'confidence-badge medium-confidence';
+            badgeText.textContent = 'Medium (Default Assumptions)';
+        }
+    }
+
+    return { area_m2, tilt_deg, efficiency_pct, azimuth_deg };
+}
 
 // ==========================================
 // DAY SELECTOR
@@ -298,9 +403,7 @@ form.addEventListener('submit', async (e) => {
     try {
         const payload = {
             city: city,
-            panel_area: parseFloat(panelAreaSlider.value),
-            panel_efficiency: parseFloat(panelEffSlider.value),
-            panel_tilt: parseFloat(panelTiltSlider.value),
+            panel_specs: getPanelSpecs(),
             forecast_days: forecastDays,
         };
 
