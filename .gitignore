@@ -1,0 +1,6 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+debug_state.json
+.pytest_cache/

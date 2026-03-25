@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, Response
 import os
 import io
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 
 from weather_api import geocode_city, reverse_geocode, get_current_weather, get_forecast, search_cities
 from predictor import predict_radiation, predict_hourly
@@ -25,7 +25,9 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "Invalid or missing JSON payload"}), 400
 
         # Validate inputs
         city = data.get("city", "").strip()
@@ -95,13 +97,17 @@ def predict():
         forecast = forecast[:max_hours]
 
         # Current prediction
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
+        
+        # Calculate local hour, wrapping around 24 hours
+        local_hour_float = (now.hour + now.minute / 60.0 + (current_weather.get("timezone_offset", 0) / 3600)) % 24
+        
         current_radiation = predict_radiation(
             weather_data=current_weather,
             lat=lat, lon=lon,
             day_of_year=now.timetuple().tm_yday,
             month=now.month,
-            hour_of_day=now.hour + (current_weather.get("timezone_offset", 0) / 3600),
+            hour_of_day=local_hour_float,
             city=city
         )
 

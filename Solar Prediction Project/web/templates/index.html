@@ -12,311 +12,762 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
+
+    <!-- ===== MODE SELECTION OVERLAY ===== -->
+    <div id="mode-overlay" class="mode-overlay">
+        <div class="overlay-content">
+            <div class="overlay-logo-anim">
+                <span class="overlay-sun" aria-hidden="true">☀️</span>
+            </div>
+            <h1 class="overlay-title" data-i18n="overlay_title">Welcome to SolarVision</h1>
+            <p class="overlay-subtitle" data-i18n="overlay_subtitle">Choose how you want to use the app</p>
+
+            <div class="mode-cards">
+                <button class="mode-card mode-card-pro" id="select-professional" type="button">
+                    <span class="mode-card-icon" aria-hidden="true">🏗️</span>
+                    <h2 data-i18n="mode_professional">Professional Mode</h2>
+                    <p data-i18n="mode_professional_desc">Advanced analytics for engineers.</p>
+                    <span class="mode-preview-features">
+                        <span class="preview-chip">📊 Charts</span>
+                        <span class="preview-chip">🗺️ Map</span>
+                        <span class="preview-chip">📥 CSV</span>
+                    </span>
+                </button>
+
+                <button class="mode-card mode-card-easy" id="select-easy" type="button">
+                    <span class="mode-card-recommended" aria-label="Recommended for first-time users">✨ Recommended</span>
+                    <span class="mode-card-icon" aria-hidden="true">🏡</span>
+                    <h2 data-i18n="mode_easy">Easy Home Mode</h2>
+                    <p data-i18n="mode_easy_desc">Simple energy advice for your family.</p>
+                    <span class="mode-preview-features">
+                        <span class="preview-chip">📍 GPS</span>
+                        <span class="preview-chip">💡 Appliances</span>
+                        <span class="preview-chip">🌍 4 Languages</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ONBOARDING TOUR (first visit) ===== -->
+    <div id="onboarding-tour" class="onboarding-tour" style="display:none;">
+        <div class="onboarding-backdrop"></div>
+        <div class="onboarding-card glass-card">
+            <div class="onboarding-step" data-step="0">
+                <span class="onboarding-step-icon" aria-hidden="true">📍</span>
+                <h3>Step 1: Set Your Location</h3>
+                <p>Use GPS or click on the map to pick your location</p>
+            </div>
+            <div class="onboarding-step" data-step="1" style="display:none;">
+                <span class="onboarding-step-icon" aria-hidden="true">☀️</span>
+                <h3>Step 2: Configure Panels</h3>
+                <p>Set your panel size, efficiency, and tilt angle</p>
+            </div>
+            <div class="onboarding-step" data-step="2" style="display:none;">
+                <span class="onboarding-step-icon" aria-hidden="true">⚡</span>
+                <h3>Step 3: Get Predictions</h3>
+                <p>See hourly forecasts, energy output & environmental impact</p>
+            </div>
+            <div class="onboarding-progress">
+                <span class="onboarding-dot active" data-dot="0"></span>
+                <span class="onboarding-dot" data-dot="1"></span>
+                <span class="onboarding-dot" data-dot="2"></span>
+            </div>
+            <div class="onboarding-actions">
+                <button type="button" id="onboarding-skip" class="onboarding-skip-btn">Skip</button>
+                <button type="button" id="onboarding-next" class="onboarding-next-btn">Next →</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== HEADER ===== -->
-    <header class="app-header">
+    <header class="app-header" style="display:none;" id="app-header">
         <div class="header-left">
             <div class="logo">
-                <span class="logo-icon">☀️</span>
+                <span class="logo-icon" aria-hidden="true">☀️</span>
                 <h1>SolarVision</h1>
             </div>
             <p class="tagline">Intelligent Solar Power Predictions</p>
         </div>
         <div class="header-right">
-            <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme">
-                <span class="theme-icon">🌙</span>
-            </button>
+            <button id="switch-mode-btn" class="mode-switch-btn" type="button" data-i18n="switch_mode"
+                aria-label="Switch between Professional and Easy Home mode">⇄ Switch Mode</button>
+            <select id="lang-select" class="lang-select" aria-label="Language selector">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="ta">தமிழ்</option>
+                <option value="mr">मराठी</option>
+            </select>
+            <!-- Theme Toggle — Sliding Switch -->
+            <label class="theme-switch" aria-label="Toggle dark/light theme">
+                <input type="checkbox" id="theme-toggle" aria-label="Toggle dark or light theme">
+                <span class="theme-track">
+                    <span class="theme-thumb-icon" id="theme-thumb-icon" aria-hidden="true">🌙</span>
+                </span>
+            </label>
         </div>
     </header>
 
     <!-- ===== MAIN CONTENT ===== -->
-    <main class="container">
-        <!-- INPUT PANEL -->
-        <section class="input-panel glass-card" id="input-panel">
-            <h2 class="section-title">
-                <span class="section-icon">📍</span>
-                Configure Your Solar Setup
-            </h2>
+    <main class="container" style="display:none;" id="main-content">
 
-            <form id="prediction-form">
-                <!-- Location Label -->
-                <p class="location-label">📍 Select your location on the map <strong>OR</strong> type a city name</p>
+        <!-- ============================================== -->
+        <!-- PROFESSIONAL MODE                              -->
+        <!-- ============================================== -->
+        <div id="professional-mode" style="display:none;">
+            <!-- INPUT PANEL -->
+            <section class="input-panel glass-card" id="input-panel">
+                <h2 class="section-title">
+                    <span class="section-icon" aria-hidden="true">📍</span>
+                    Configure Your Solar Setup
+                </h2>
 
-                <!-- City Input -->
-                <div class="form-group">
-                    <label for="city-input">City</label>
-                    <div class="autocomplete-wrapper">
-                        <input type="text" id="city-input" name="city" placeholder="Type a city name..."
-                            autocomplete="off">
-                        <ul id="city-suggestions" class="suggestions-list"></ul>
+                <!-- Step Progress Indicator -->
+                <div class="form-steps">
+                    <div class="form-step active" data-form-step="location">
+                        <span class="form-step-num">1</span>
+                        <span class="form-step-label">Location</span>
+                    </div>
+                    <div class="form-step-line"></div>
+                    <div class="form-step" data-form-step="panels">
+                        <span class="form-step-num">2</span>
+                        <span class="form-step-label">Panels</span>
+                    </div>
+                    <div class="form-step-line"></div>
+                    <div class="form-step" data-form-step="forecast">
+                        <span class="form-step-num">3</span>
+                        <span class="form-step-label">Forecast</span>
                     </div>
                 </div>
 
-                <!-- Interactive Map -->
-                <div class="form-group map-group">
-                    <div class="map-header">
-                        <label>Interactive Map</label>
-                        <button type="button" id="use-location-btn" class="geo-btn" title="Use your current location">
-                            📍 Use Current Location
+                <form id="prediction-form">
+                    <!-- TWO-COLUMN DASHBOARD LAYOUT -->
+                    <div class="pro-dashboard">
+                        <!-- LEFT COLUMN: Map + Location -->
+                        <div class="pro-map-col">
+                            <!-- Location Label -->
+                            <p class="location-label">
+                                <span aria-hidden="true">📍</span> Select your location on the map
+                                <strong>OR</strong> type a city name
+                            </p>
+
+                            <!-- City Input -->
+                            <div class="form-group">
+                                <label for="city-input">City</label>
+                                <div class="autocomplete-wrapper">
+                                    <input type="text" id="city-input" name="city" placeholder="Type a city name..."
+                                        autocomplete="off">
+                                    <ul id="city-suggestions" class="suggestions-list"></ul>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Map -->
+                            <div class="form-group map-group">
+                                <div class="map-header">
+                                    <label>Interactive Map</label>
+                                    <button type="button" id="use-location-btn" class="geo-btn"
+                                        aria-label="Use GPS to get your current location"
+                                        title="Use your current location">
+                                        <span aria-hidden="true">📍</span> Use Current Location
+                                    </button>
+                                </div>
+                                <div id="map" role="application" aria-label="Interactive location map"></div>
+                                <p class="map-coords" id="map-coords" role="status" aria-live="polite">Click on the map to select a location</p>
+                                <!-- Map first-use tooltip -->
+                                <div class="map-tooltip" id="map-tooltip" style="display:none;">
+                                    <span aria-hidden="true">👆</span> Click anywhere on the map or drag the marker to select a location
+                                    <button type="button" class="map-tooltip-close" id="map-tooltip-close" aria-label="Close tooltip">✕</button>
+                                </div>
+                            </div>
+
+                            <!-- Hidden lat/lon fields -->
+                            <input type="hidden" id="selected-lat" name="lat">
+                            <input type="hidden" id="selected-lon" name="lon">
+                        </div>
+
+                        <!-- RIGHT COLUMN: Panel Config -->
+                        <div class="pro-config-col">
+                            <!-- Specs Setup Mode Toggle -->
+                            <div class="specs-toggle">
+                                <label class="toggle-label">
+                                    <input type="radio" name="specs_mode" value="advanced" checked> Advanced Setup
+                                </label>
+                                <label class="toggle-label">
+                                    <input type="radio" name="specs_mode" value="simplified"> Quick Setup
+                                </label>
+                            </div>
+
+                            <!-- Panel Specs (Advanced) -->
+                            <div id="advanced-specs" class="form-row">
+                                <div class="form-group">
+                                    <label for="panel-area">
+                                        Panel Area
+                                        <div class="slider-input-wrapper">
+                                            <input type="number" id="area-input" class="manual-slider-input" value="10" min="1" max="500" step="1" aria-label="Panel Area">
+                                            <span class="slider-unit">m²</span>
+                                        </div>
+                                    </label>
+                                    <input type="range" id="panel-area" name="panel_area" min="1" max="500" value="10"
+                                        step="1" aria-valuenow="10" aria-valuemin="1" aria-valuemax="500">
+                                </div>
+                                <div class="form-group">
+                                    <label for="panel-efficiency">
+                                        Efficiency
+                                        <div class="slider-input-wrapper">
+                                            <input type="number" id="efficiency-input" class="manual-slider-input" value="18" min="5" max="45" step="0.5" aria-label="Panel Efficiency">
+                                            <span class="slider-unit">%</span>
+                                        </div>
+                                    </label>
+                                    <input type="range" id="panel-efficiency" name="panel_efficiency" min="5" max="45"
+                                        value="18" step="0.5" aria-valuenow="18" aria-valuemin="5" aria-valuemax="45">
+                                </div>
+                                <div class="form-group">
+                                    <label for="panel-tilt">
+                                        Tilt Angle
+                                        <div class="slider-input-wrapper">
+                                            <input type="number" id="tilt-input" class="manual-slider-input" value="30" min="0" max="90" step="1" aria-label="Tilt Angle">
+                                            <span class="slider-unit">°</span>
+                                        </div>
+                                    </label>
+                                    <input type="range" id="panel-tilt" name="panel_tilt" min="0" max="90" value="30"
+                                        step="1" aria-valuenow="30" aria-valuemin="0" aria-valuemax="90">
+                                </div>
+                                <div class="form-group full-width-group">
+                                    <label for="panel-count-adv">
+                                        Number of Panels
+                                        <div class="slider-input-wrapper">
+                                            <input type="number" id="count-input-adv" class="manual-slider-input" value="6" min="1" max="500" step="1" aria-label="Number of Panels">
+                                            <span class="slider-unit"></span>
+                                        </div>
+                                    </label>
+                                    <input type="range" id="panel-count-adv" name="panel_count_adv" min="1" max="500"
+                                        value="6" step="1" aria-valuenow="6" aria-valuemin="1" aria-valuemax="500">
+                                </div>
+
+                                <!-- New Dynamic Capacity Preview to fill empty space -->
+                                <div class="advanced-capacity-preview full-width-group" id="advanced-capacity-preview">
+                                    <div class="capacity-header">
+                                        <span class="est-icon" aria-hidden="true">⚡</span>
+                                        <span>System Capacity Preview</span>
+                                    </div>
+                                    <div class="capacity-content">
+                                        <div class="cap-stat">
+                                            <span class="cap-label">Peak Theoretical Power</span>
+                                            <span class="cap-value" id="adv-peak">1.8 <small>kW</small></span>
+                                        </div>
+                                        <div class="est-divider"></div>
+                                        <div class="cap-stat">
+                                            <span class="cap-label">Max Clear-Day Yield</span>
+                                            <span class="cap-value" id="adv-yield">~9.0 <small>kWh</small></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel Specs (Simplified) -->
+                            <div id="simplified-specs" class="form-row simplified-inputs" style="display:none;">
+                                <div class="form-group tooltip-container">
+                                    <label for="panel-orientation">
+                                        Roof Orientation
+                                        <span class="info-icon"
+                                            title="Direction your roof faces. South is usually optimal." aria-label="Info: Direction your roof faces. South is usually optimal.">ℹ️</span>
+                                    </label>
+                                    <select id="panel-orientation" name="panel_orientation" class="custom-select">
+                                        <option value="">Select (Optional)</option>
+                                        <option value="N">North</option>
+                                        <option value="E">East</option>
+                                        <option value="S">South</option>
+                                        <option value="W">West</option>
+                                    </select>
+                                </div>
+                                <div class="form-group tooltip-container">
+                                    <label for="panel-tilt-simple">
+                                        Roof Tilt
+                                        <span class="info-icon"
+                                            title="Angle of your roof. Medium (approx 30°) is common." aria-label="Info: Angle of your roof. Medium is common.">ℹ️</span>
+                                    </label>
+                                    <select id="panel-tilt-simple" name="panel_tilt_simple" class="custom-select">
+                                        <option value="">Select (Optional)</option>
+                                        <option value="Flat">Flat</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="Steep">Steep</option>
+                                    </select>
+                                </div>
+                                <div class="form-group tooltip-container">
+                                    <label for="panel-count">
+                                        Number of Panels
+                                        <span class="info-icon"
+                                            title="Total number of solar panels. Average panel is ~1.6m²." aria-label="Info: Average panel is about 1.6 square meters.">ℹ️</span>
+                                    </label>
+                                    <input type="number" id="panel-count" name="panel_count" min="1" max="1000"
+                                        placeholder="e.g., 10" class="custom-input">
+                                </div>
+                                <div class="form-group tooltip-container">
+                                    <label for="panel-age">
+                                        Panel Age Range
+                                        <span class="info-icon"
+                                            title="Older panels lose a small percentage of efficiency over time." aria-label="Info: Older panels lose efficiency over time.">ℹ️</span>
+                                    </label>
+                                    <select id="panel-age" name="panel_age" class="custom-select">
+                                        <option value="">Select (Optional)</option>
+                                        <option value="0-5">0-5 yrs</option>
+                                        <option value="5-10">5-10 yrs</option>
+                                        <option value="10+">10+ yrs</option>
+                                    </select>
+                                </div>
+                                <!-- New Re-active Smart Estimate Card to fill empty space -->
+                                <div class="smart-estimation-card full-width-group" id="smart-estimation-card">
+                                    <div class="est-header">
+                                        <span class="est-icon" aria-hidden="true">💡</span>
+                                        <h4>Smart Estimate</h4>
+                                        <div class="est-pulse"></div>
+                                    </div>
+                                    <div class="est-content">
+                                        <div class="est-stat">
+                                            <span class="est-label">System Size</span>
+                                            <span class="est-value" id="est-size">~1.6 m²</span>
+                                        </div>
+                                        <div class="est-divider"></div>
+                                        <div class="est-stat">
+                                            <span class="est-label">Efficiency</span>
+                                            <span class="est-value" id="est-eff">18%</span>
+                                        </div>
+                                        <div class="est-divider"></div>
+                                        <div class="est-stat">
+                                            <span class="est-label">Tilt Angle</span>
+                                            <span class="est-value" id="est-tilt">30°</span>
+                                        </div>
+                                    </div>
+                                    <p class="est-disclaimer">Values adjust in real-time based on your inputs. If left blank, these standard assumptions are used to predict your energy!</p>
+                                </div>
+                            </div>
+
+                            <!-- Forecast Days -->
+                            <div class="form-group">
+                                <label>Forecast Period</label>
+                                <div class="day-selector" role="group" aria-label="Select forecast period">
+                                    <button type="button" class="day-btn" data-days="1" aria-pressed="false">1
+                                        Day</button>
+                                    <button type="button" class="day-btn active" data-days="3"
+                                        aria-pressed="true">3 Days</button>
+                                    <button type="button" class="day-btn" data-days="5" aria-pressed="false">5
+                                        Days</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit -->
+                    <button type="submit" class="predict-btn" id="predict-btn">
+                        <span class="btn-text"><span aria-hidden="true">⚡</span> Generate Prediction</span>
+                        <span class="btn-loader" style="display:none;">
+                            <span class="spinner" aria-hidden="true"></span> Analyzing...
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Progress Stepper (shown during loading) -->
+                <div id="prediction-progress" class="prediction-progress" style="display:none;" role="status" aria-live="polite">
+                    <div class="progress-step" data-progress="weather">
+                        <span class="progress-icon" aria-hidden="true">🌤️</span>
+                        <span class="progress-label">Fetching weather data</span>
+                        <span class="progress-check" aria-hidden="true">✓</span>
+                    </div>
+                    <div class="progress-step" data-progress="model">
+                        <span class="progress-icon" aria-hidden="true">🧠</span>
+                        <span class="progress-label">Running ML model</span>
+                        <span class="progress-check" aria-hidden="true">✓</span>
+                    </div>
+                    <div class="progress-step" data-progress="metrics">
+                        <span class="progress-icon" aria-hidden="true">📊</span>
+                        <span class="progress-label">Computing metrics</span>
+                        <span class="progress-check" aria-hidden="true">✓</span>
+                    </div>
+                    <p class="progress-estimate">Usually takes 3–5 seconds</p>
+                </div>
+
+                <!-- Error Message -->
+                <div id="error-message" class="error-box" style="display:none;" role="alert" aria-live="assertive">
+                    <span class="error-text-content"></span>
+                    <button type="button" class="error-retry-btn" id="error-retry-btn" style="display:none;">🔄 Retry</button>
+                </div>
+            </section>
+
+            <!-- ===== RESULTS — Skeleton Loader ===== -->
+            <section id="results-skeleton" class="results-section" style="display:none;" aria-hidden="true">
+                <div class="skeleton-location glass-card">
+                    <div class="skeleton-line skeleton-title"></div>
+                    <div class="skeleton-line skeleton-subtitle"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="skeleton-card glass-card"><div class="skeleton-circle"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    <div class="skeleton-card glass-card"><div class="skeleton-circle"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    <div class="skeleton-card glass-card"><div class="skeleton-circle"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                    <div class="skeleton-card glass-card"><div class="skeleton-circle"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+                </div>
+                <div class="skeleton-chart glass-card"><div class="skeleton-line skeleton-chart-area"></div></div>
+            </section>
+
+            <!-- ===== RESULTS SECTION (hidden until prediction) ===== -->
+            <section id="results-section" class="results-section" style="display:none;">
+
+                <!-- Summary Insight Banner -->
+                <div class="insight-banner glass-card" id="insight-banner" style="display:none;">
+                    <span class="insight-icon" aria-hidden="true">💡</span>
+                    <p class="insight-text" id="insight-text"></p>
+                </div>
+
+                <!-- Location Header -->
+                <div class="location-header glass-card stagger-item" id="location-header">
+                    <div class="location-info">
+                        <h2 id="result-city"></h2>
+                        <p id="result-coords"></p>
+                        <div class="confidence-badge" id="confidence-badge" style="display:none;">
+                            Confidence: <strong id="confidence-level">Medium (Default Assumptions)</strong>
+                        </div>
+                    </div>
+                    <div class="current-weather" id="current-weather"></div>
+                </div>
+
+                <!-- Metric Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card glass-card solar-card stagger-item" id="card-radiation">
+                        <div class="metric-icon" aria-hidden="true">☀️</div>
+                        <div class="metric-value" id="val-radiation">—</div>
+                        <div class="metric-label">Peak Solar Radiation</div>
+                        <div class="metric-unit">W/m²</div>
+                    </div>
+                    <div class="metric-card glass-card power-card stagger-item" id="card-power">
+                        <div class="metric-icon" aria-hidden="true">⚡</div>
+                        <div class="metric-value" id="val-power">—</div>
+                        <div class="metric-label">Peak Panel Power</div>
+                        <div class="metric-unit">W</div>
+                    </div>
+                    <div class="metric-card glass-card energy-card stagger-item" id="card-energy">
+                        <div class="metric-icon" aria-hidden="true">🔋</div>
+                        <div class="metric-value" id="val-energy">—</div>
+                        <div class="metric-label">Total Energy</div>
+                        <div class="metric-unit">kWh</div>
+                    </div>
+                    <div class="metric-card glass-card co2-card stagger-item" id="card-co2">
+                        <div class="metric-icon" aria-hidden="true">🌱</div>
+                        <div class="metric-value" id="val-co2">—</div>
+                        <div class="metric-label">CO₂ Saved</div>
+                        <div class="metric-unit">kg</div>
+                    </div>
+                </div>
+
+                <!-- Environmental Impact -->
+                <div class="env-impact glass-card stagger-item" id="env-impact">
+                    <h3><span aria-hidden="true">🌍</span> Environmental Impact</h3>
+                    <div class="env-grid">
+                        <div class="env-item">
+                            <span class="env-icon" aria-hidden="true">🌳</span>
+                            <span class="env-value" id="env-trees">—</span>
+                            <span class="env-label">Trees Equivalent</span>
+                        </div>
+                        <div class="env-item">
+                            <span class="env-icon" aria-hidden="true">🚗</span>
+                            <span class="env-value" id="env-cars">—</span>
+                            <span class="env-label">Cars Off Road (days)</span>
+                        </div>
+                        <div class="env-item">
+                            <span class="env-icon" aria-hidden="true">📱</span>
+                            <span class="env-value" id="env-phones">—</span>
+                            <span class="env-label">Phone Charges</span>
+                        </div>
+                        <div class="env-item">
+                            <span class="env-icon" aria-hidden="true">💡</span>
+                            <span class="env-value" id="env-led">—</span>
+                            <span class="env-label">LED Bulb Hours</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Peak Solar Hour -->
+                <div class="peak-hour glass-card stagger-item" id="peak-section">
+                    <h3><span aria-hidden="true">🏆</span> Peak Solar Hour</h3>
+                    <div class="peak-info">
+                        <span class="peak-time" id="peak-time">—</span>
+                        <span class="peak-radiation" id="peak-radiation">— W/m²</span>
+                    </div>
+                    <p class="peak-tip" id="peak-tip"></p>
+                </div>
+
+                <!-- Charts Section — Tabbed -->
+                <div class="charts-section stagger-item">
+                    <div class="chart-tabs" role="tablist" aria-label="Chart selection">
+                        <button type="button" class="chart-tab active" data-chart="radiation" role="tab" aria-selected="true" aria-controls="chart-panel-radiation">
+                            <span aria-hidden="true">☀️</span> Radiation
+                        </button>
+                        <button type="button" class="chart-tab" data-chart="power" role="tab" aria-selected="false" aria-controls="chart-panel-power">
+                            <span aria-hidden="true">⚡</span> Power
+                        </button>
+                        <button type="button" class="chart-tab" data-chart="energy" role="tab" aria-selected="false" aria-controls="chart-panel-energy">
+                            <span aria-hidden="true">🔋</span> Energy
                         </button>
                     </div>
-                    <div id="map"></div>
-                    <p class="map-coords" id="map-coords">Click on the map to select a location</p>
-                </div>
-
-                <!-- Hidden lat/lon fields -->
-                <input type="hidden" id="selected-lat" name="lat">
-                <input type="hidden" id="selected-lon" name="lon">
-
-                <!-- Specs Setup Mode Toggle -->
-                <div class="specs-toggle">
-                    <label class="toggle-label">
-                        <input type="radio" name="specs_mode" value="advanced" checked> Advanced Setup
-                    </label>
-                    <label class="toggle-label">
-                        <input type="radio" name="specs_mode" value="simplified"> Quick Setup
-                    </label>
-                </div>
-
-                <!-- Panel Specs (Advanced) -->
-                <div id="advanced-specs" class="form-row">
-                    <div class="form-group">
-                        <label for="panel-area">
-                            Panel Area
-                            <span class="slider-value" id="area-value">10 m²</span>
-                        </label>
-                        <input type="range" id="panel-area" name="panel_area" min="1" max="500" value="10" step="1">
+                    <div class="chart-panel glass-card" id="chart-panel-radiation" role="tabpanel">
+                        <h3>☀️ Hourly Solar Radiation</h3>
+                        <canvas id="radiation-chart"></canvas>
                     </div>
-                    <div class="form-group">
-                        <label for="panel-efficiency">
-                            Efficiency
-                            <span class="slider-value" id="efficiency-value">18%</span>
-                        </label>
-                        <input type="range" id="panel-efficiency" name="panel_efficiency" min="5" max="45" value="18"
-                            step="0.5">
+                    <div class="chart-panel glass-card" id="chart-panel-power" role="tabpanel" style="display:none;">
+                        <h3>⚡ Hourly Power Output</h3>
+                        <canvas id="power-chart"></canvas>
                     </div>
-                    <div class="form-group">
-                        <label for="panel-tilt">
-                            Tilt Angle
-                            <span class="slider-value" id="tilt-value">30°</span>
-                        </label>
-                        <input type="range" id="panel-tilt" name="panel_tilt" min="0" max="90" value="30" step="1">
-                    </div>
-                    <div class="form-group full-width-group">
-                        <label for="panel-count-adv">
-                            Number of Panels
-                            <span class="slider-value" id="count-value-adv">6</span>
-                        </label>
-                        <input type="range" id="panel-count-adv" name="panel_count_adv" min="1" max="500" value="6" step="1">
+                    <div class="chart-panel glass-card" id="chart-panel-energy" role="tabpanel" style="display:none;">
+                        <h3>🔋 Cumulative Energy Production</h3>
+                        <canvas id="energy-chart"></canvas>
                     </div>
                 </div>
 
-                <!-- Panel Specs (Simplified) -->
-                <div id="simplified-specs" class="form-row simplified-inputs" style="display:none;">
-                    <div class="form-group tooltip-container">
-                        <label for="panel-orientation">
-                            Roof Orientation
-                            <span class="info-icon" title="Direction your roof faces. South is usually optimal.">ℹ️</span>
-                        </label>
-                        <select id="panel-orientation" name="panel_orientation" class="custom-select">
-                            <option value="">Select (Optional)</option>
-                            <option value="N">North</option>
-                            <option value="E">East</option>
-                            <option value="S">South</option>
-                            <option value="W">West</option>
-                        </select>
-                    </div>
-                    <div class="form-group tooltip-container">
-                        <label for="panel-tilt-simple">
-                            Roof Tilt
-                            <span class="info-icon" title="Angle of your roof. Medium (approx 30°) is common.">ℹ️</span>
-                        </label>
-                        <select id="panel-tilt-simple" name="panel_tilt_simple" class="custom-select">
-                            <option value="">Select (Optional)</option>
-                            <option value="Flat">Flat</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Steep">Steep</option>
-                        </select>
-                    </div>
-                    <div class="form-group tooltip-container">
-                        <label for="panel-count">
-                            Number of Panels
-                            <span class="info-icon" title="Total number of solar panels. Average panel is ~1.6m².">ℹ️</span>
-                        </label>
-                        <input type="number" id="panel-count" name="panel_count" min="1" max="1000" placeholder="e.g., 10" class="custom-input">
-                    </div>
-                    <div class="form-group tooltip-container">
-                        <label for="panel-age">
-                            Panel Age Range
-                            <span class="info-icon" title="Older panels lose a small percentage of efficiency over time.">ℹ️</span>
-                        </label>
-                        <select id="panel-age" name="panel_age" class="custom-select">
-                            <option value="">Select (Optional)</option>
-                            <option value="0-5">0-5 yrs</option>
-                            <option value="5-10">5-10 yrs</option>
-                            <option value="10+">10+ yrs</option>
-                        </select>
+                <!-- Daily Summary Table -->
+                <div class="daily-summary glass-card stagger-item" id="daily-summary">
+                    <h3><span aria-hidden="true">📊</span> Daily Summary</h3>
+                    <div class="table-wrapper">
+                        <table id="daily-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Energy (kWh)</th>
+                                    <th>CO₂ Saved (kg)</th>
+                                    <th>Peak Hour</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-tbody"></tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- Forecast Days -->
-                <div class="form-group">
-                    <label>Forecast Period</label>
-                    <div class="day-selector">
-                        <button type="button" class="day-btn" data-days="1">1 Day</button>
-                        <button type="button" class="day-btn active" data-days="3">3 Days</button>
-                        <button type="button" class="day-btn" data-days="5">5 Days</button>
+                <!-- Action Buttons -->
+                <div class="download-section">
+                    <button id="download-csv" class="download-btn" aria-label="Download CSV report">
+                        <span aria-hidden="true">📥</span> Download CSV Report
+                    </button>
+                    <button id="share-results" class="share-btn" aria-label="Share results">
+                        <span aria-hidden="true">📤</span> Share Results
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- PREMIUM EASY HOME MODE (Wizard flow)          -->
+        <!-- ============================================== -->
+        <div id="easy-mode" class="easy-mode-container" style="display:none;">
+            <!-- Ambient Mesh Background for Easy Mode -->
+            <div class="easy-bg-mesh"></div>
+
+            <!-- STEP 1: Location -->
+            <section class="village-wizard-step glass-card" id="easy-step-1">
+                <div class="wizard-header">
+                    <span class="wizard-step-badge">Phase 1</span>
+                    <h2 data-i18n="find_my_home">📍 Where is your home?</h2>
+                </div>
+                <div class="radar-container" id="radar-animation">
+                    <div class="radar-ring"></div>
+                    <div class="radar-ring delay-1"></div>
+                    <div class="radar-ring delay-2"></div>
+                    <button type="button" id="village-geo-btn" class="radar-btn pulse" aria-label="Find your home location using GPS">
+                        <span class="village-geo-icon" aria-hidden="true">📍</span>
+                        <span class="btn-text-geo" data-i18n="find_my_home">Detect Location</span>
+                    </button>
+                </div>
+                <!-- Location Result Bubble -->
+                <div id="village-location-status" class="location-bubble slide-up" style="display:none;" role="status" aria-live="polite">
+                    <span class="check-icon" aria-hidden="true">✅</span>
+                    <span id="village-location-text"></span>
+                </div>
+                <!-- Hidden lat/lon for village mode -->
+                <input type="hidden" id="village-lat">
+                <input type="hidden" id="village-lon">
+            </section>
+
+            <!-- STEP 2: Panel Sizing (Revealed after location) -->
+            <section class="village-wizard-step glass-card slide-up" id="easy-step-2" style="display:none;">
+                <div class="wizard-header">
+                    <span class="wizard-step-badge">Phase 2</span>
+                    <h2 data-i18n="select_panel">Select Your Solar Setup</h2>
+                </div>
+
+                <div class="home-illustration-container">
+                    <!-- SVG House Illustration -->
+                    <svg class="house-svg" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="roof-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b4a6b"/><stop offset="100%" stop-color="#1d263b"/></linearGradient>
+                            <linearGradient id="wall-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fdfbfb"/><stop offset="100%" stop-color="#ebedee"/></linearGradient>
+                            <linearGradient id="panel-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#00f2fe"/></linearGradient>
+                        </defs>
+                        <!-- House Structure -->
+                        <polygon points="100,20 30,70 170,70" fill="url(#roof-grad)"/>
+                        <rect x="40" y="70" width="120" height="70" fill="url(#wall-grad)"/>
+                        <rect x="85" y="100" width="30" height="40" fill="#a5b1c2" rx="2"/>
+                        <rect x="55" y="85" width="20" height="20" fill="#d1d8e0" rx="2"/>
+                        <rect x="125" y="85" width="20" height="20" fill="#d1d8e0" rx="2"/>
+                        <!-- Dynamic Panels Container -->
+                        <g id="svg-panels" class="svg-panels"></g>
+                    </svg>
+                </div>
+
+                <!-- Panel Icon Picker -->
+                <div class="village-panel-picker" id="village-panel-picker" role="group" aria-label="Select your solar panel setup">
+                    <button type="button" class="village-panel-card" data-panel="small" aria-pressed="false">
+                        <span class="village-panel-name" data-i18n="panel_small">Small</span>
+                        <span class="village-panel-desc" data-i18n="panel_small_desc">1 Panel</span>
+                    </button>
+                    <button type="button" class="village-panel-card" data-panel="standard" aria-pressed="false">
+                        <span class="village-panel-name" data-i18n="panel_standard">Standard</span>
+                        <span class="village-panel-desc" data-i18n="panel_standard_desc">2 Panels</span>
+                    </button>
+                    <button type="button" class="village-panel-card" data-panel="large" aria-pressed="false">
+                        <span class="village-panel-name" data-i18n="panel_large">Large</span>
+                        <span class="village-panel-desc" data-i18n="panel_large_desc">Farm Array</span>
+                    </button>
+                </div>
+
+                <!-- Predict Button -->
+                <div class="predict-action-area">
+                    <button type="button" id="village-predict-btn" class="village-predict-btn glow-effect" disabled aria-label="Predict solar energy">
+                        <span class="village-btn-text" data-i18n="predict_btn">☀️ Predict My Energy</span>
+                        <span class="village-btn-loader" style="display:none;">
+                            <span class="spinner" aria-hidden="true"></span>
+                            <span data-i18n="predicting">Generating magic...</span>
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Error Message -->
+                <div id="village-error" class="error-box" style="display:none;" role="alert" aria-live="assertive">
+                    <span class="error-text-content"></span>
+                    <button type="button" class="error-retry-btn village-retry-btn" style="display:none;">🔄 Retry</button>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- PREMIUM RESULTS DASHBOARD                      -->
+            <!-- ============================================== -->
+            <section id="village-results-section" class="village-results-section" style="display:none;">
+
+                <!-- TOP ROW: Weather (Apple style) & Savings (Fintech style) -->
+                <div class="premium-widgets-row">
+                    <!-- Dynamic Weather Widget -->
+                    <div class="apple-weather-widget glass-card" id="village-weather-cue">
+                        <div class="weather-bg-gradient" id="weather-bg"></div>
+                        <div class="weather-content">
+                            <h3 data-i18n="todays_weather">Today's Weather</h3>
+                            <div class="weather-main-row">
+                                <span class="weather-big-emoji" id="village-weather-emoji" aria-hidden="true"></span>
+                                <span class="weather-big-temp" id="village-weather-temp"></span>
+                            </div>
+                            <span class="weather-desc" id="village-weather-desc"></span>
+                        </div>
+                    </div>
+
+                    <!-- Fintech Savings Card -->
+                    <div class="fintech-savings-card glass-card hover-glow" id="village-savings-card">
+                        <div class="hologram-overlay"></div>
+                        <div class="fintech-header">
+                            <span class="icon" aria-hidden="true">💳</span>
+                            <span data-i18n="cost_savings_title">Cost Savings</span>
+                        </div>
+                        <div class="fintech-value">
+                            <span class="currency">₹</span>
+                            <span id="village-savings-amount" class="counter">0</span>
+                        </div>
+                        <p class="fintech-label" data-i18n="savings_label">Saved vs. grid today</p>
+                        <p class="fintech-rate" data-i18n="savings_rate_note">Base: ₹8/kWh</p>
                     </div>
                 </div>
 
-                <!-- Submit -->
-                <button type="submit" class="predict-btn" id="predict-btn">
-                    <span class="btn-text">⚡ Generate Prediction</span>
-                    <span class="btn-loader" style="display:none;">
-                        <span class="spinner"></span> Analyzing...
-                    </span>
-                </button>
-            </form>
+                <!-- INTERACTIVE BATTERY CAPACITY BUILDER -->
+                <div class="interactive-battery-section glass-card">
+                    <h2 class="section-title"><span aria-hidden="true">🔋</span> Your Interactive Energy Battery</h2>
+                    <p class="battery-subtitle">Toggle your home appliances ON/OFF to see exactly how much battery you have left!</p>
 
-            <!-- Error Message -->
-            <div id="error-message" class="error-box" style="display:none;"></div>
-        </section>
+                    <div class="battery-layout-grid">
+                        <!-- Left: Huge Battery Visualizer -->
+                        <div class="battery-visual-col">
+                            <div class="battery-tank-wrapper">
+                                <div class="battery-tank">
+                                    <div class="battery-liquid" id="battery-liquid">
+                                        <svg class="waves" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none">
+                                            <path fill="rgba(255,255,255,0.4)" d="M0,160L48,165.3C96,171,192,181,288,160C384,139,480,85,576,90.7C672,96,768,160,864,165.3C960,171,1056,117,1152,106.7C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                                            <path fill="rgba(255,255,255,0.2)" d="M0,64L48,80C96,96,192,128,288,128C384,128,480,96,576,112C672,128,768,192,864,197.3C960,203,1056,149,1152,133.3C1248,117,1344,139,1392,149.3L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="battery-value-overlay">
+                                        <span id="battery-percent-text">100</span><span class="pct">%</span>
+                                        <div class="battery-kwh-text" id="battery-kwh-text">0.00 kWh left</div>
+                                    </div>
+                                </div>
+                                <div class="battery-tip">You have <strong id="initial-kwh-label">0</strong> kWh total today.</div>
+                            </div>
+                        </div>
 
-        <!-- ===== RESULTS SECTION (hidden until prediction) ===== -->
-        <section id="results-section" class="results-section" style="display:none;">
-
-            <!-- Location Header -->
-            <div class="location-header glass-card" id="location-header">
-                <div class="location-info">
-                    <h2 id="result-city"></h2>
-                    <p id="result-coords"></p>
-                    <div class="confidence-badge" id="confidence-badge" style="display:none;">
-                        Confidence: <strong id="confidence-level">Medium (Default Assumptions)</strong>
+                        <!-- Right: Interactive Appliance Toggles -->
+                        <div class="battery-controls-col">
+                            <h3 data-i18n="what_you_can_run">What You Can Power</h3>
+                            <div class="appliance-toggle-grid" id="village-appliance-grid">
+                                <!-- Populated by JS -->
+                            </div>
+                            <!-- Live Status Indicator -->
+                            <div class="village-status-card" id="village-energy-status">
+                                <div class="village-status-indicator" id="village-status-indicator">
+                                    <span class="village-status-dot" id="village-status-dot" aria-hidden="true"></span>
+                                    <span class="village-status-text" id="village-status-text">Perfect balance</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="current-weather" id="current-weather"></div>
-            </div>
 
-            <!-- Metric Cards -->
-            <div class="metrics-grid">
-                <div class="metric-card glass-card solar-card" id="card-radiation">
-                    <div class="metric-icon">☀️</div>
-                    <div class="metric-value" id="val-radiation">—</div>
-                    <div class="metric-label">Peak Solar Radiation</div>
-                    <div class="metric-unit">W/m²</div>
+                <div class="restart-action">
+                    <button type="button" id="village-predict-again" class="village-predict-again-btn" aria-label="Make another prediction">
+                        <span aria-hidden="true">🔄</span> Start Fresh
+                    </button>
                 </div>
-                <div class="metric-card glass-card power-card" id="card-power">
-                    <div class="metric-icon">⚡</div>
-                    <div class="metric-value" id="val-power">—</div>
-                    <div class="metric-label">Peak Panel Power</div>
-                    <div class="metric-unit">W</div>
-                </div>
-                <div class="metric-card glass-card energy-card" id="card-energy">
-                    <div class="metric-icon">🔋</div>
-                    <div class="metric-value" id="val-energy">—</div>
-                    <div class="metric-label">Total Energy</div>
-                    <div class="metric-unit">kWh</div>
-                </div>
-                <div class="metric-card glass-card co2-card" id="card-co2">
-                    <div class="metric-icon">🌱</div>
-                    <div class="metric-value" id="val-co2">—</div>
-                    <div class="metric-label">CO₂ Saved</div>
-                    <div class="metric-unit">kg</div>
-                </div>
-            </div>
+            </section>
+        </div>
 
-            <!-- Environmental Impact -->
-            <div class="env-impact glass-card" id="env-impact">
-                <h3>🌍 Environmental Impact</h3>
-                <div class="env-grid">
-                    <div class="env-item">
-                        <span class="env-icon">🌳</span>
-                        <span class="env-value" id="env-trees">—</span>
-                        <span class="env-label">Trees Equivalent</span>
-                    </div>
-                    <div class="env-item">
-                        <span class="env-icon">🚗</span>
-                        <span class="env-value" id="env-cars">—</span>
-                        <span class="env-label">Cars Off Road (days)</span>
-                    </div>
-                    <div class="env-item">
-                        <span class="env-icon">📱</span>
-                        <span class="env-value" id="env-phones">—</span>
-                        <span class="env-label">Phone Charges</span>
-                    </div>
-                    <div class="env-item">
-                        <span class="env-icon">💡</span>
-                        <span class="env-value" id="env-led">—</span>
-                        <span class="env-label">LED Bulb Hours</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Peak Solar Hour -->
-            <div class="peak-hour glass-card" id="peak-section">
-                <h3>🏆 Peak Solar Hour</h3>
-                <div class="peak-info">
-                    <span class="peak-time" id="peak-time">—</span>
-                    <span class="peak-radiation" id="peak-radiation">— W/m²</span>
-                </div>
-                <p class="peak-tip" id="peak-tip"></p>
-            </div>
-
-            <!-- Charts Section -->
-            <div class="charts-section">
-                <div class="chart-container glass-card">
-                    <h3>☀️ Hourly Solar Radiation</h3>
-                    <canvas id="radiation-chart"></canvas>
-                </div>
-                <div class="chart-container glass-card">
-                    <h3>⚡ Hourly Power Output</h3>
-                    <canvas id="power-chart"></canvas>
-                </div>
-                <div class="chart-container glass-card">
-                    <h3>🔋 Cumulative Energy Production</h3>
-                    <canvas id="energy-chart"></canvas>
-                </div>
-            </div>
-
-            <!-- Daily Summary Table -->
-            <div class="daily-summary glass-card" id="daily-summary">
-                <h3>📊 Daily Summary</h3>
-                <div class="table-wrapper">
-                    <table id="daily-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Energy (kWh)</th>
-                                <th>CO₂ Saved (kg)</th>
-                                <th>Peak Hour</th>
-                            </tr>
-                        </thead>
-                        <tbody id="daily-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Download Button -->
-            <div class="download-section">
-                <button id="download-csv" class="download-btn">
-                    📥 Download CSV Report
-                </button>
-            </div>
-        </section>
     </main>
+
+    <!-- ===== MOBILE STICKY ACTION BAR ===== -->
+    <div class="mobile-sticky-bar" id="mobile-sticky-bar" style="display:none;">
+        <button type="button" id="mobile-predict-btn" class="mobile-predict-btn">
+            <span aria-hidden="true">⚡</span> Generate Prediction
+        </button>
+    </div>
 
     <!-- ===== FOOTER ===== -->
     <footer class="app-footer">
-        <p>SolarVista © 2026 — Powered by Machine Learning & OpenWeatherMap</p>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <p>SolarVision © 2026</p>
+            </div>
+            <div class="footer-links">
+                <a href="#" id="footer-how-it-works">How It Works</a>
+                <a href="#" id="footer-data-sources">Data Sources</a>
+            </div>
+            <div class="footer-powered">
+                <span>Powered by</span>
+                <span class="powered-badges">
+                    <span class="powered-badge">🧠 ML Model</span>
+                    <span class="powered-badge">🌤️ OpenWeatherMap</span>
+                    <span class="powered-badge">🛰️ NASA POWER</span>
+                </span>
+            </div>
+        </div>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='i18n.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=3"></script>
 </body>
 
 </html>
