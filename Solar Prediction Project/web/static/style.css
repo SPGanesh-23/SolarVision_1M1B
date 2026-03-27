@@ -3498,13 +3498,13 @@ html[data-theme="light"] .theme-thumb-icon {
     align-items: center;
     justify-content: center;
     z-index: 10;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     color: white;
 }
 
-#battery-percent-text { font-size: 3.5rem; font-weight: 800; line-height: 1; }
-.pct { font-size: 1.5rem; font-weight: 700; }
-.battery-kwh-text { font-size: 0.9rem; font-weight: 600; opacity: 0.9; margin-top: 4px; }
+#battery-percent-text { font-size: 2.8rem; font-weight: 800; line-height: 1; }
+.pct { font-size: 1.2rem; font-weight: 700; }
+.battery-kwh-text { font-size: 0.85rem; font-weight: 600; opacity: 0.95; margin-top: 4px; text-align: center; padding: 0 8px; }
 
 .battery-tip { font-size: 0.85rem; color: var(--text-secondary); text-align: center; }
 
@@ -3566,9 +3566,157 @@ html[data-theme="light"] .theme-thumb-icon {
 @media (max-width: 768px) {
     .premium-widgets-row { grid-template-columns: 1fr; }
     .battery-layout-grid { grid-template-columns: 1fr; gap: 24px; }
-    .battery-tank-wrapper { flex-direction: row; align-items: center; justify-content: center; }
-    .battery-tank { width: 80px; height: 200px; }
-    .battery-tank::before { width: 40px; height: 8px; }
-    #battery-percent-text { font-size: 2rem; }
-    .pct { font-size: 1rem; }
+    .battery-tank-wrapper { flex-direction: column; align-items: center; justify-content: center; }
+    .battery-tank { width: 130px; height: 260px; }
+    .battery-tank::before { width: 56px; height: 8px; }
+    #battery-percent-text { font-size: 2.6rem; line-height: 1; }
+    .pct { font-size: 1.2rem; }
+    .battery-value-overlay { padding: 0 10px; }
+    .battery-kwh-text { font-size: 0.9rem; text-align: center; }
+}
+
+/* ===================================
+   RESPONSIVE LAYOUT OVERRIDES (Global)
+   =================================== */
+
+@media (max-width: 1024px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .env-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .pro-dashboard {
+        grid-template-columns: 1fr !important;
+    }
+    #advanced-specs {
+        grid-template-columns: 1fr;
+    }
+    .form-row.simplified-inputs {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-header {
+        padding: 16px 20px;
+        flex-wrap: wrap;
+    }
+    .mobile-menu-btn {
+        display: block !important;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 1.8rem;
+        cursor: pointer;
+        padding: 0 10px;
+    }
+    .header-right {
+        display: none !important;
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 16px;
+        gap: 16px;
+    }
+    .header-right.active {
+        display: flex !important;
+    }
+    .logo h1 {
+        font-size: 1.4rem;
+    }
+    .tagline {
+        display: none;
+    }
+    .container {
+        padding: 0 16px 40px;
+    }
+    .input-panel {
+        padding: 24px;
+    }
+    .form-row, .pro-dashboard {
+        grid-template-columns: 1fr !important;
+        display: flex;
+        flex-direction: column;
+    }
+    .pro-map-col #map {
+        height: 280px;
+    }
+    #map {
+        height: 250px;
+    }
+    .map-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    .metrics-grid, .env-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .location-header {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+    }
+    .current-weather {
+        text-align: center;
+        justify-content: center;
+    }
+    /* Easy Mode Panel Adjustments */
+    .village-panel-picker, .village-appliance-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+    .village-panel-card, .village-appliance-card {
+        flex-direction: row !important;
+        min-height: auto;
+        padding: 18px 20px;
+        gap: 14px;
+        justify-content: flex-start;
+    }
+    .appliance-icon, .village-panel-icon {
+        font-size: 2rem;
+        margin-bottom: 0;
+    }
+    .village-energy-value span:first-child {
+        font-size: 2.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .env-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+    .day-selector {
+        flex-direction: column;
+    }
+    .slider-with-number {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .slider-number {
+        width: 100%;
+    }
+    .peak-info {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .village-geo-btn {
+        font-size: 1.1rem;
+        min-height: 56px;
+        padding: 14px 20px;
+    }
+    .village-section-title {
+        font-size: 1.3rem;
+    }
+    .village-input-panel {
+        padding: 24px 16px;
+    }
+    .village-status-text {
+        font-size: 0.95rem;
+    }
 }

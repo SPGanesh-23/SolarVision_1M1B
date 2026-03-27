@@ -101,6 +101,17 @@ langSelect?.addEventListener('change', (e) => {
 });
 
 // ==========================================
+// MOBILE MENU TOGGLE
+// ==========================================
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const headerRight = document.getElementById('header-right');
+
+mobileMenuBtn?.addEventListener('click', () => {
+    headerRight?.classList.toggle('active');
+});
+
+
+// ==========================================
 // MODE SELECTION OVERLAY
 // ==========================================
 

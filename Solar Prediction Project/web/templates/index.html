@@ -94,7 +94,11 @@
             </div>
             <p class="tagline">Intelligent Solar Power Predictions</p>
         </div>
-        <div class="header-right">
+        <!-- Mobile Menu Toggle -->
+        <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Toggle Menu" style="display:none;">
+            <span aria-hidden="true">☰</span>
+        </button>
+        <div class="header-right" id="header-right">
             <button id="switch-mode-btn" class="mode-switch-btn" type="button" data-i18n="switch_mode"
                 aria-label="Switch between Professional and Easy Home mode">⇄ Switch Mode</button>
             <select id="lang-select" class="lang-select" aria-label="Language selector">
@@ -701,7 +705,9 @@
                                         </svg>
                                     </div>
                                     <div class="battery-value-overlay">
-                                        <span id="battery-percent-text">100</span><span class="pct">%</span>
+                                        <div style="display: flex; align-items: baseline; justify-content: center; gap: 2px;">
+                                            <span id="battery-percent-text">100</span><span class="pct">%</span>
+                                        </div>
                                         <div class="battery-kwh-text" id="battery-kwh-text">0.00 kWh left</div>
                                     </div>
                                 </div>
