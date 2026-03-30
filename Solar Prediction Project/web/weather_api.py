@@ -5,12 +5,17 @@ Handles OpenWeatherMap API calls, geocoding, and caching.
 
 import requests
 from geopy.geocoders import Nominatim
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 import time
 import json
+import os
+from dotenv import load_dotenv
 
-API_KEY = "11a738ef47063222b2d5e25d33034760"
+# Load local .env, useful for development
+load_dotenv()
+
+API_KEY = os.environ.get("OPENWEATHER_API_KEY")
 
 # --- City coordinate cache ---
 _geo_cache = {}
@@ -36,6 +41,8 @@ def geocode_city(city_name):
             "lon": location.longitude,
             "display_name": location.address
         }
+        if len(_geo_cache) > 1000:
+            _geo_cache.clear()
         _geo_cache[city_key] = result
         return result
     except Exception as e:
@@ -69,6 +76,8 @@ def reverse_geocode(lat, lon):
             "city": city,
             "display_name": location.address,
         }
+        if len(_geo_cache) > 1000:
+            _geo_cache.clear()
         _geo_cache[cache_key] = result
         return result
     except Exception as e:
@@ -89,6 +98,8 @@ def _get_cached(cache_key):
 
 def _set_cache(cache_key, data):
     """Store API response in cache."""
+    if len(_weather_cache) > 1000:
+        _weather_cache.clear()
     _weather_cache[cache_key] = (data, time.time())
 
 
@@ -160,7 +171,7 @@ def get_forecast(lat, lon):
             local_dt = item["dt"] + tz_offset
             raw_points.append({
                 "dt": local_dt,
-                "datetime": datetime.utcfromtimestamp(local_dt).strftime("%Y-%m-%d %H:%M:%S"),
+                "datetime": datetime.fromtimestamp(local_dt, timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 "temperature": item["main"]["temp"],
                 "humidity": item["main"]["humidity"],
                 "pressure": item["main"]["pressure"],
@@ -204,7 +215,7 @@ def _interpolate_to_hourly(raw_points):
             frac = h / gap_hours
             interpolated = {
                 "dt": dt1 + h * 3600,
-                "datetime": datetime.utcfromtimestamp(dt1 + h * 3600).strftime("%Y-%m-%d %H:%M:%S"),
+                "datetime": datetime.fromtimestamp(dt1 + h * 3600, timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 "weather_main": p1["weather_main"],
                 "weather_icon": p1["weather_icon"],
             }

@@ -19,7 +19,7 @@ model = joblib.load(MODEL_PATH)
 try:
     model_info = joblib.load(INFO_PATH)
     FEATURE_COLUMNS = model_info["feature_columns"]
-except:
+except Exception:
     FEATURE_COLUMNS = [
         "temperature", "wind_speed", "humidity", "cloud_cover",
         "precipitation", "pressure", "latitude", "longitude",

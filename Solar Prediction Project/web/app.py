@@ -182,7 +182,7 @@ def cities():
 @app.route("/download/csv", methods=["POST"])
 def download_csv():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         hourly = data.get("hourly", [])
         daily = data.get("daily", [])
         city = data.get("city", "Unknown")
@@ -247,4 +247,4 @@ def download_csv():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
