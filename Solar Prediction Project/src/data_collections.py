@@ -100,7 +100,9 @@ location = geolocator.geocode(test_city)
 lat = location.latitude
 lon = location.longitude
 
-API_KEY = "11a738ef47063222b2d5e25d33034760"
+from dotenv import load_dotenv
+load_dotenv()
+API_KEY = os.environ.get("OPENWEATHER_API_KEY")
 
 weather_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
 

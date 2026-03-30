@@ -7,3 +7,5 @@ scikit-learn
 geopy
 xgboost
 reportlab
+gunicorn
+python-dotenv
