@@ -82,8 +82,8 @@ print(f"Testing samples: {len(X_test)}")
 # -----------------------------
 
 rf_model = RandomForestRegressor(
-    n_estimators=200,
-    max_depth=20,
+    n_estimators=50,
+    max_depth=12,
     min_samples_split=5,
     random_state=42,
     n_jobs=-1
@@ -91,8 +91,8 @@ rf_model = RandomForestRegressor(
 
 if HAS_XGBOOST:
     boost_model = XGBRegressor(
-        n_estimators=200,
-        max_depth=8,
+        n_estimators=50,
+        max_depth=6,
         learning_rate=0.1,
         subsample=0.8,
         colsample_bytree=0.8,
@@ -101,8 +101,8 @@ if HAS_XGBOOST:
     )
 else:
     boost_model = GradientBoostingRegressor(
-        n_estimators=200,
-        max_depth=8,
+        n_estimators=50,
+        max_depth=6,
         learning_rate=0.1,
         subsample=0.8,
         random_state=42
