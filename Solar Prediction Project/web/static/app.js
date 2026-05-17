@@ -303,15 +303,32 @@ specsToggleRadios.forEach(radio => {
 // ==========================================
 // SLIDER & MANUAL INPUT SYNC
 // ==========================================
+// Slider track fill: paints the left portion of the range slider with accent color
+function updateSliderFill(slider) {
+    if (!slider) return;
+    const min = parseFloat(slider.min) || 0;
+    const max = parseFloat(slider.max) || 100;
+    const val = parseFloat(slider.value) || 0;
+    const pct = ((val - min) / (max - min)) * 100;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const fillColor = isDark ? '#ffb347' : '#e6930e';
+    const trackColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    slider.style.background = `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct}%, ${trackColor} ${pct}%, ${trackColor} 100%)`;
+}
+
 function syncSliderAndInput(slider, input) {
     if (!slider || !input) return;
     
-    // Slider changes update Input
+    // Initial fill
+    updateSliderFill(slider);
+    
+    // Slider changes update Input + fill
     slider.addEventListener('input', () => {
         input.value = slider.value;
+        updateSliderFill(slider);
     });
     
-    // Input changes update Slider
+    // Input changes update Slider + fill
     input.addEventListener('input', () => {
         let val = parseFloat(input.value);
         let min = parseFloat(slider.min);
@@ -326,6 +343,7 @@ function syncSliderAndInput(slider, input) {
                 slider.value = min;
             }
         }
+        updateSliderFill(slider);
     });
 
     // Enforce min/max boundaries visually when input loses focus
@@ -336,6 +354,7 @@ function syncSliderAndInput(slider, input) {
         
         if (isNaN(val) || val < min) input.value = min;
         else if (val > max) input.value = max;
+        updateSliderFill(slider);
     });
 }
 
@@ -764,10 +783,15 @@ async function doPrediction() {
         // Stagger animate results
         staggerAnimateResults();
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Toast notification for success
+        if (typeof showToast === 'function') {
+            showToast(`Prediction complete for ${data.location.city} — ${data.total.energy_kwh.toFixed(1)} kWh generated!`, 'success');
+        }
 
     } catch (err) {
         console.error('Fetch error:', err);
         showError('Network error. Please check your connection and try again.', true);
+        if (typeof showToast === 'function') showToast('Network error — please check your connection.', 'error');
         setLoading(false); hideProgressStepper();
         if (resultsSkeleton) resultsSkeleton.style.display = 'none';
     }
@@ -962,7 +986,8 @@ document.getElementById('download-csv')?.addEventListener('click', async () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = `solar_forecast_${currentData.location.city.replace(/\s/g, '_')}.csv`;
         document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
-    } catch (err) { console.error('Download error:', err); showError('Failed to download CSV.'); }
+        if (typeof showToast === 'function') showToast('CSV report downloaded successfully!', 'success');
+    } catch (err) { console.error('Download error:', err); showError('Failed to download CSV.'); if (typeof showToast === 'function') showToast('Failed to download CSV.', 'error'); }
 });
 
 // ==========================================
@@ -979,7 +1004,13 @@ document.getElementById('share-results')?.addEventListener('click', async () => 
     if (navigator.share) {
         try { await navigator.share({ title: 'SolarVision Prediction', text }); } catch(e) { /* cancelled */ }
     } else {
-        try { await navigator.clipboard.writeText(text); alert('Results copied to clipboard!'); } catch(e) { alert(text); }
+        try {
+            await navigator.clipboard.writeText(text);
+            if (typeof showToast === 'function') showToast('Results copied to clipboard!', 'success');
+            else alert('Results copied to clipboard!');
+        } catch(e) {
+            alert(text);
+        }
     }
 });
 
@@ -1296,14 +1327,23 @@ function getWeatherEmoji(main) {
 function animateValue(elementId, value, decimals) {
     const element = document.getElementById(elementId);
     if (!element) return;
+    // Add pop entrance animation
+    element.classList.remove('counting');
+    void element.offsetWidth; // trigger reflow
+    element.classList.add('counting');
     const duration = 1000;
     const startTime = performance.now();
     function update(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 4); // quartic easing for more drama
-        element.textContent = (value * eased).toFixed(decimals);
+        const current = value * eased;
+        // Locale-format whole numbers, fixed decimals for fractional
+        element.textContent = decimals === 0
+            ? Math.round(current).toLocaleString()
+            : current.toFixed(decimals);
         if (progress < 1) requestAnimationFrame(update);
+        else element.classList.remove('counting');
     }
     requestAnimationFrame(update);
 }
@@ -1698,4 +1738,99 @@ function formatDate(dateStr) {
             })
             .catch(() => {});
     };
+})();
+
+// ==========================================
+// TIER 1: TOAST NOTIFICATION SYSTEM
+// ==========================================
+(function initToastSystem() {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const ICONS = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️',
+    };
+
+    /**
+     * showToast(message, type, durationMs)
+     * @param {string} message  — Text to display
+     * @param {'success'|'error'|'warning'|'info'} type — Visual variant
+     * @param {number} durationMs — Auto-dismiss in ms (default 4000, 0 = no auto-dismiss)
+     */
+    window.showToast = function(message, type = 'info', durationMs = 4000) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <span class="toast-icon">${ICONS[type] || ICONS.info}</span>
+            <span class="toast-body">${message}</span>
+            <button type="button" class="toast-close" aria-label="Dismiss">✕</button>
+            ${durationMs > 0 ? `<div class="toast-progress" style="animation-duration:${durationMs}ms"></div>` : ''}
+        `;
+
+        // Close button
+        toast.querySelector('.toast-close').addEventListener('click', () => dismissToast(toast));
+
+        container.appendChild(toast);
+
+        // Auto-dismiss
+        if (durationMs > 0) {
+            setTimeout(() => dismissToast(toast), durationMs);
+        }
+
+        // Cap at 5 visible toasts
+        while (container.children.length > 5) {
+            dismissToast(container.children[0]);
+        }
+    };
+
+    function dismissToast(el) {
+        if (!el || el.classList.contains('removing')) return;
+        el.classList.add('removing');
+        el.addEventListener('animationend', () => el.remove(), { once: true });
+        // Fallback if animationend doesn't fire
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
+    }
+})();
+
+// ==========================================
+// TIER 1: SCROLL-TO-TOP BUTTON
+// ==========================================
+(function initScrollToTop() {
+    const btn = document.getElementById('scroll-top-btn');
+    if (!btn) return;
+
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            requestAnimationFrame(() => {
+                btn.classList.toggle('visible', window.scrollY > 400);
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, { passive: true });
+
+    btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+})();
+
+// ==========================================
+// TIER 1: SLIDER FILL ON THEME CHANGE
+// ==========================================
+// When user toggles theme, refresh all slider fills
+(function initSliderFillOnTheme() {
+    const toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+    toggle.addEventListener('change', () => {
+        // Small delay to let data-theme attribute update
+        setTimeout(() => {
+            [panelAreaSlider, panelEffSlider, panelTiltSlider, panelCountAdvSlider].forEach(s => {
+                if (s) updateSliderFill(s);
+            });
+        }, 50);
+    });
 })();

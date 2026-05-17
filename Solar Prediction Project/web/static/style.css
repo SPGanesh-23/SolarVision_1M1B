@@ -4744,3 +4744,275 @@ html[data-theme="light"] .theme-thumb-icon {
     margin-top: 12px;
     line-height: 1.5;
 }
+
+/* ===================================
+   TIER 1: TOAST NOTIFICATION SYSTEM
+   =================================== */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    max-width: 420px;
+    width: calc(100% - 48px);
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 14px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.4;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    animation: toast-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.toast.removing {
+    animation: toast-slide-out 0.35s ease forwards;
+}
+
+.toast-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.toast-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.toast-close:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.1);
+}
+
+/* Toast progress bar (auto-dismiss timer) */
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 0 0 14px 14px;
+    animation: toast-progress-shrink linear forwards;
+}
+
+/* Toast variants */
+.toast.toast-success {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.toast.toast-success .toast-progress { background: #10b981; }
+
+.toast.toast-error {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.toast.toast-error .toast-progress { background: #ef4444; }
+
+.toast.toast-warning {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+.toast.toast-warning .toast-progress { background: #f59e0b; }
+
+.toast.toast-info {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+.toast.toast-info .toast-progress { background: #3b82f6; }
+
+[data-theme="light"] .toast {
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .toast.toast-success { background: rgba(16, 185, 129, 0.08); }
+[data-theme="light"] .toast.toast-error   { background: rgba(239, 68, 68, 0.08); }
+[data-theme="light"] .toast.toast-warning { background: rgba(245, 158, 11, 0.08); }
+[data-theme="light"] .toast.toast-info    { background: rgba(59, 130, 246, 0.08); }
+
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(80px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toast-slide-out {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(80px) scale(0.9); }
+}
+@keyframes toast-progress-shrink {
+    from { width: 100%; }
+    to   { width: 0%; }
+}
+
+@media (max-width: 480px) {
+    .toast-container {
+        bottom: 16px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+    }
+}
+
+/* ===================================
+   TIER 1: SCROLL-TO-TOP FAB
+   =================================== */
+.scroll-top-btn {
+    position: fixed;
+    bottom: 28px;
+    left: 28px;
+    z-index: 9990;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--border-card);
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px) scale(0.8);
+}
+
+.scroll-top-btn.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.scroll-top-btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent-solar);
+    box-shadow: 0 8px 32px rgba(255,179,71,0.2);
+    transform: translateY(-3px) scale(1.05);
+}
+
+.scroll-top-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+[data-theme="light"] .scroll-top-btn {
+    box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 480px) {
+    .scroll-top-btn {
+        bottom: 20px;
+        left: 16px;
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+    }
+}
+
+/* ===================================
+   TIER 1: FOOTER REDESIGN
+   =================================== */
+.footer-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.footer-brand p {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.footer-logo-icon {
+    font-size: 1.2rem;
+    filter: drop-shadow(0 0 6px rgba(255,179,71,0.3));
+}
+
+.footer-version-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(255,179,71,0.1);
+    border: 1px solid rgba(255,179,71,0.2);
+    color: var(--accent-solar);
+    letter-spacing: 0.3px;
+}
+
+.footer-link-dot {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    user-select: none;
+}
+
+.footer-links a#footer-github {
+    color: var(--accent-solar);
+}
+.footer-links a#footer-github:hover {
+    color: #ff6723;
+}
+
+/* ===================================
+   TIER 1: SLIDER TRACK FILL COLOR
+   =================================== */
+/* The fill is applied via JS (inline background),
+   but these base styles ensure the right visual: */
+input[type="range"] {
+    background: var(--slider-track);
+    border-radius: 3px;
+    transition: background 0.1s ease;
+}
+
+/* ===================================
+   TIER 1: METRIC CARD VALUE ENTRANCE
+   =================================== */
+.metric-value {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.metric-value.counting {
+    animation: metric-pop 0.3s ease;
+}
+
+@keyframes metric-pop {
+    0%   { transform: scale(0.6); opacity: 0.3; }
+    60%  { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Environmental impact value counter entrance */
+.env-value.counting {
+    animation: metric-pop 0.3s ease;
+}

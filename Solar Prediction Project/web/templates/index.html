@@ -881,13 +881,20 @@
         </button>
     </div>
 
-    <!-- Footer — unchanged -->
+    <!-- ===== FOOTER (Redesigned) ===== -->
     <footer class="app-footer">
         <div class="footer-content">
-            <div class="footer-brand"><p>SolarVision © 2026</p></div>
-            <div class="footer-links" style="display:none;">
+            <div class="footer-brand">
+                <span class="footer-logo-icon" aria-hidden="true">☀️</span>
+                <p>SolarVision © 2026</p>
+                <span class="footer-version-badge">v3.1.0</span>
+            </div>
+            <div class="footer-links">
                 <a href="#" id="footer-how-it-works">How It Works</a>
+                <span class="footer-link-dot" aria-hidden="true">·</span>
                 <a href="#" id="footer-data-sources">Data Sources</a>
+                <span class="footer-link-dot" aria-hidden="true">·</span>
+                <a href="https://github.com/SPGanesh-23/SolarVision_1M1B" target="_blank" rel="noopener noreferrer" id="footer-github">⭐ GitHub</a>
             </div>
             <div class="footer-powered">
                 <span>Powered by</span>
@@ -899,6 +906,14 @@
             </div>
         </div>
     </footer>
+
+    <!-- ===== TOAST NOTIFICATION CONTAINER ===== -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+    <!-- ===== SCROLL-TO-TOP FAB ===== -->
+    <button type="button" class="scroll-top-btn" id="scroll-top-btn" aria-label="Scroll to top" title="Back to top">
+        <span aria-hidden="true">↑</span>
+    </button>
 
     <!-- Your existing scripts — unchanged and in the same order -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
