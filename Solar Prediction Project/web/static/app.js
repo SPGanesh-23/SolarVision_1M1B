@@ -3,6 +3,25 @@
    All UI/UX Improvements Integrated
    =================================== */
 
+// ── SESSION TOKEN ──
+// Generate a unique ID for this browser and store it permanently.
+// This gets sent to the server on every API call so the backend can
+// save predictions under "your" session without requiring a login.
+// crypto.randomUUID() gives a string like "a3f8b2c1-9d4e-4f7a-b6c8-..."
+if (!localStorage.getItem('sv_session_token')) {
+    localStorage.setItem('sv_session_token', crypto.randomUUID());
+}
+const SESSION_TOKEN = localStorage.getItem('sv_session_token');
+
+// Helper: returns the headers object for any API call to our server.
+// Use this instead of writing { 'Content-Type': '...' } every time.
+function apiHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        'X-Session-Token': SESSION_TOKEN,
+    };
+}
+
 // --- State ---
 let currentData = null;
 let forecastDays = 3;
@@ -719,7 +738,7 @@ async function doPrediction() {
         lastPayload = payload;
 
         const res = await fetch('/predict', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload)
         });
         const data = await res.json();
 
@@ -734,6 +753,12 @@ async function doPrediction() {
         hideProgressStepper();
         if (resultsSkeleton) resultsSkeleton.style.display = 'none';
         displayResults(data);
+        if (data.monthly_solar_kwh) {
+            if (typeof billCalcPrefill === 'function') billCalcPrefill(data.monthly_solar_kwh, data.prediction_id);
+            if (typeof prefillSolarKwh === 'function') prefillSolarKwh(data.monthly_solar_kwh);
+        }
+        // Update history badge count (new prediction was just saved to DB)
+        if (typeof refreshHistoryBadge === 'function') refreshHistoryBadge();
         setLoading(false);
         resultsSection.style.display = 'block';
         // Stagger animate results
@@ -1064,7 +1089,7 @@ villagePredictBtn?.addEventListener('click', async () => {
 
     try {
         const payload = { city: '', lat: villageLat, lon: villageLon, panel_specs: panelPresets[villagePanel], forecast_days: 1 };
-        const res = await fetch('/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await fetch('/predict', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload) });
         const data = await res.json();
         if (!res.ok) { showVillageError(data.error || 'Prediction failed.'); setVillageLoading(false); return; }
         displayVillageResults(data);
@@ -1287,3 +1312,390 @@ function formatDate(dateStr) {
     const dt = new Date(dateStr);
     return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
+
+// ==========================================
+// PREDICTION HISTORY PANEL
+// ==========================================
+(function initHistoryPanel() {
+    const historyBtn = document.getElementById('history-btn');
+    const historyPanel = document.getElementById('history-panel');
+    const historyOverlay = document.getElementById('history-overlay');
+    const historyCloseBtn = document.getElementById('history-close-btn');
+    const historyList = document.getElementById('history-list');
+    const historyEmpty = document.getElementById('history-empty');
+    const historySearch = document.getElementById('history-search');
+    const historyBadge = document.getElementById('history-badge');
+    const compareToggle = document.getElementById('history-compare-toggle');
+    const compareBar = document.getElementById('history-compare-bar');
+    const compareRunBtn = document.getElementById('compare-run-btn');
+    const compareCancelBtn = document.getElementById('compare-cancel-btn');
+    const compareResults = document.getElementById('history-compare-results');
+    const compareGrid = document.getElementById('compare-grid');
+    const compareBackBtn = document.getElementById('compare-back-btn');
+
+    let historyData = [];
+    let compareMode = false;
+    let selectedIds = [];
+
+    // ── Open / Close panel ──
+    function openPanel() {
+        historyPanel.classList.add('active');
+        historyOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        fetchHistory();
+    }
+
+    function closePanel() {
+        historyPanel.classList.remove('active');
+        historyOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+        exitCompareMode();
+    }
+
+    historyBtn?.addEventListener('click', openPanel);
+    historyCloseBtn?.addEventListener('click', closePanel);
+    historyOverlay?.addEventListener('click', closePanel);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && historyPanel?.classList.contains('active')) closePanel();
+    });
+
+    // ── Fetch history from API ──
+    async function fetchHistory(cityFilter = '') {
+        try {
+            let url = '/history?limit=50';
+            if (cityFilter) url += `&city=${encodeURIComponent(cityFilter)}`;
+            const res = await fetch(url, { headers: { 'X-Session-Token': SESSION_TOKEN } });
+            const data = await res.json();
+
+            if (data.error) {
+                historyData = [];
+            } else {
+                historyData = data.predictions || [];
+            }
+
+            renderHistoryList();
+            updateBadge();
+        } catch (err) {
+            console.error('History fetch error:', err);
+            historyData = [];
+            renderHistoryList();
+        }
+    }
+
+    // ── Update badge count ──
+    function updateBadge() {
+        if (!historyBadge) return;
+        if (historyData.length > 0) {
+            historyBadge.textContent = historyData.length;
+            historyBadge.style.display = 'inline-flex';
+        } else {
+            historyBadge.style.display = 'none';
+        }
+    }
+
+    // ── Render the list of prediction cards ──
+    function renderHistoryList() {
+        if (!historyList) return;
+
+        // Show compare results or list view
+        if (compareResults?.style.display === 'block') return;
+
+        if (historyData.length === 0) {
+            historyList.style.display = 'none';
+            historyEmpty.style.display = 'flex';
+            return;
+        }
+
+        historyEmpty.style.display = 'none';
+        historyList.style.display = 'block';
+        historyList.innerHTML = '';
+
+        historyData.forEach((pred, idx) => {
+            const card = document.createElement('div');
+            card.className = 'history-card';
+            if (selectedIds.includes(pred.id)) card.classList.add('selected');
+            card.style.animationDelay = `${idx * 0.05}s`;
+
+            const dateStr = pred.created_at
+                ? new Date(pred.created_at).toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                })
+                : 'Unknown date';
+
+            // Build bill info row if bill data exists
+            const billHtml = pred.bill ? `
+                <div class="history-card-bill">
+                    <span class="history-bill-badge">💰 Saved ₹${Math.round(pred.bill.monthly_savings || 0).toLocaleString('en-IN')}/mo</span>
+                    <span class="history-bill-detail">₹${Math.round(pred.bill.bill_without_solar || 0).toLocaleString('en-IN')} → ₹${Math.round(pred.bill.bill_with_solar || 0).toLocaleString('en-IN')}</span>
+                </div>
+            ` : '';
+
+            card.innerHTML = `
+                <div class="history-card-check">${selectedIds.includes(pred.id) ? '✓' : ''}</div>
+                <div class="history-card-top">
+                    <div class="history-card-city">📍 ${pred.city || 'Unknown'}</div>
+                    <div class="history-card-date">${dateStr}</div>
+                </div>
+                <div class="history-card-metrics">
+                    <div class="history-metric">
+                        <div class="history-metric-value">${(pred.total_energy_kwh || 0).toFixed(1)}</div>
+                        <div class="history-metric-label">kWh</div>
+                    </div>
+                    <div class="history-metric">
+                        <div class="history-metric-value">${(pred.peak_power_w || 0).toFixed(0)}</div>
+                        <div class="history-metric-label">Peak W</div>
+                    </div>
+                    <div class="history-metric">
+                        <div class="history-metric-value">${pred.forecast_days || '—'}d</div>
+                        <div class="history-metric-label">Forecast</div>
+                    </div>
+                </div>
+                ${billHtml}
+            `;
+
+            card.addEventListener('click', () => {
+                if (compareMode) {
+                    toggleCompareSelection(pred.id, card);
+                } else {
+                    loadPastPrediction(pred.id);
+                }
+            });
+
+            historyList.appendChild(card);
+        });
+
+        // Apply compare-mode class for styling
+        if (compareMode) {
+            historyList.classList.add('compare-mode');
+        } else {
+            historyList.classList.remove('compare-mode');
+        }
+    }
+
+    // ── Load a past prediction (click to view) ──
+    async function loadPastPrediction(predId) {
+        try {
+            const res = await fetch(`/history/${predId}`, {
+                headers: { 'X-Session-Token': SESSION_TOKEN }
+            });
+            const data = await res.json();
+
+            if (data.error) {
+                console.error('Failed to load prediction:', data.error);
+                return;
+            }
+
+            // Use the existing displayResults function to render
+            closePanel();
+
+            if (typeof currentData !== 'undefined') currentData = data;
+            if (typeof displayResults === 'function') displayResults(data);
+
+            const resultsSection = document.getElementById('results-section');
+            if (resultsSection) {
+                resultsSection.style.display = 'block';
+                if (typeof staggerAnimateResults === 'function') staggerAnimateResults();
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } catch (err) {
+            console.error('Load prediction error:', err);
+        }
+    }
+
+    // ── Compare mode ──
+    function enterCompareMode() {
+        compareMode = true;
+        selectedIds = [];
+        compareToggle?.classList.add('active');
+        compareBar?.classList.add('active');
+        compareResults.style.display = 'none';
+        historyList.style.display = 'block';
+        historyEmpty.style.display = 'none';
+        renderHistoryList();
+    }
+
+    function exitCompareMode() {
+        compareMode = false;
+        selectedIds = [];
+        compareToggle?.classList.remove('active');
+        compareBar?.classList.remove('active');
+        compareRunBtn.disabled = true;
+        compareResults.style.display = 'none';
+        historyList.style.display = 'block';
+        renderHistoryList();
+    }
+
+    function toggleCompareSelection(id, cardEl) {
+        const idx = selectedIds.indexOf(id);
+        if (idx >= 0) {
+            selectedIds.splice(idx, 1);
+            cardEl.classList.remove('selected');
+            cardEl.querySelector('.history-card-check').textContent = '';
+        } else {
+            if (selectedIds.length >= 2) return; // max 2
+            selectedIds.push(id);
+            cardEl.classList.add('selected');
+            cardEl.querySelector('.history-card-check').textContent = '✓';
+        }
+
+        compareRunBtn.disabled = selectedIds.length !== 2;
+    }
+
+    async function runComparison() {
+        if (selectedIds.length !== 2) return;
+
+        try {
+            const res = await fetch('/compare', {
+                method: 'POST',
+                headers: apiHeaders(),
+                body: JSON.stringify({ prediction_ids: selectedIds }),
+            });
+            const data = await res.json();
+
+            if (data.error) {
+                console.error('Compare error:', data.error);
+                return;
+            }
+
+            renderCompareResults(data);
+        } catch (err) {
+            console.error('Compare fetch error:', err);
+        }
+    }
+
+    function renderCompareResults(data) {
+        historyList.style.display = 'none';
+        compareBar.classList.remove('active');
+        compareResults.style.display = 'block';
+
+        const olderDate = data.older.created_at
+            ? new Date(data.older.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : '';
+        const newerDate = data.newer.created_at
+            ? new Date(data.newer.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : '';
+
+        const metrics = [
+            { label: 'Total Energy', key: 'total_energy_kwh', unit: 'kWh', deltaKey: 'energy_kwh', decimals: 1 },
+            { label: 'Solar Radiation', key: 'current_radiation_wm2', unit: 'W/m²', deltaKey: 'radiation_wm2', decimals: 1 },
+            { label: 'Peak Power', key: 'peak_power_w', unit: 'W', deltaKey: 'peak_power_w', decimals: 0 },
+        ];
+
+        let html = `
+            <div class="compare-city-labels">
+                <div class="compare-city-card older">
+                    <div class="compare-city-name">📍 ${data.older.city || 'Unknown'}</div>
+                    <div class="compare-city-date">${olderDate}</div>
+                </div>
+                <div class="compare-city-card newer">
+                    <div class="compare-city-name">📍 ${data.newer.city || 'Unknown'}</div>
+                    <div class="compare-city-date">${newerDate}</div>
+                </div>
+            </div>
+        `;
+
+        metrics.forEach(m => {
+            const oldVal = (data.older[m.key] || 0);
+            const newVal = (data.newer[m.key] || 0);
+            const delta = data.delta[m.deltaKey] || 0;
+            const sign = delta > 0 ? '+' : '';
+            const cls = delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+
+            html += `
+                <div class="compare-metric-row">
+                    <div class="compare-metric-name">${m.label}</div>
+                    <div class="compare-value">${oldVal.toFixed(m.decimals)} <small>${m.unit}</small></div>
+                    <div class="compare-vs">vs</div>
+                    <div class="compare-value">${newVal.toFixed(m.decimals)} <small>${m.unit}</small></div>
+                    <div class="compare-delta ${cls}">${sign}${delta.toFixed(m.decimals)} ${m.unit}</div>
+                </div>
+            `;
+        });
+
+        // ── Bill comparison section (only if both have bill data) ──
+        const olderBill = data.older.bill;
+        const newerBill = data.newer.bill;
+        if (olderBill && newerBill) {
+            html += `<div class="compare-section-divider">⚡ Bill Calculator Comparison</div>`;
+
+            const billMetrics = [
+                { label: 'Bill Without Solar', oVal: olderBill.bill_without_solar, nVal: newerBill.bill_without_solar, dKey: 'bill_without_solar', prefix: '₹', dec: 0 },
+                { label: 'Bill With Solar', oVal: olderBill.bill_with_solar, nVal: newerBill.bill_with_solar, dKey: 'bill_with_solar', prefix: '₹', dec: 0 },
+                { label: 'Monthly Savings', oVal: olderBill.monthly_savings, nVal: newerBill.monthly_savings, dKey: 'monthly_savings', prefix: '₹', dec: 0 },
+            ];
+
+            billMetrics.forEach(bm => {
+                const oV = bm.oVal || 0;
+                const nV = bm.nVal || 0;
+                const d = data.delta[bm.dKey] || 0;
+                const s = d > 0 ? '+' : '';
+                const c = d > 0 ? 'positive' : d < 0 ? 'negative' : 'neutral';
+
+                html += `
+                    <div class="compare-metric-row">
+                        <div class="compare-metric-name">${bm.label}</div>
+                        <div class="compare-value">${bm.prefix}${Math.round(oV).toLocaleString('en-IN')}</div>
+                        <div class="compare-vs">vs</div>
+                        <div class="compare-value">${bm.prefix}${Math.round(nV).toLocaleString('en-IN')}</div>
+                        <div class="compare-delta ${c}">${s}${bm.prefix}${Math.round(Math.abs(d)).toLocaleString('en-IN')}</div>
+                    </div>
+                `;
+            });
+        } else if (olderBill || newerBill) {
+            html += `<div class="compare-section-note">💡 Bill data available for only one prediction. Run the bill calculator on both to compare savings.</div>`;
+        }
+
+        compareGrid.innerHTML = html;
+    }
+
+    // ── Event listeners ──
+    compareToggle?.addEventListener('click', () => {
+        if (compareMode) exitCompareMode();
+        else enterCompareMode();
+    });
+    compareCancelBtn?.addEventListener('click', exitCompareMode);
+    compareRunBtn?.addEventListener('click', runComparison);
+    compareBackBtn?.addEventListener('click', () => {
+        compareResults.style.display = 'none';
+        historyList.style.display = 'block';
+        exitCompareMode();
+    });
+
+    // ── Search filter with debounce ──
+    let searchTimer;
+    historySearch?.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            fetchHistory(historySearch.value.trim());
+        }, 300);
+    });
+
+    // ── Auto-refresh badge on page load ──
+    // Fetch silently to update the badge count
+    setTimeout(() => {
+        fetch('/history?limit=50', { headers: { 'X-Session-Token': SESSION_TOKEN } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.error) {
+                    historyData = data.predictions || [];
+                    updateBadge();
+                }
+            })
+            .catch(() => {});
+    }, 1000);
+
+    // ── Expose a function so app.js prediction flow can refresh badge ──
+    window.refreshHistoryBadge = function() {
+        fetch('/history?limit=50', { headers: { 'X-Session-Token': SESSION_TOKEN } })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.error) {
+                    historyData = data.predictions || [];
+                    updateBadge();
+                }
+            })
+            .catch(() => {});
+    };
+})();

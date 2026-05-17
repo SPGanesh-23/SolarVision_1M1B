@@ -1,11 +1,13 @@
-flask
-joblib
-requests
-pandas
-numpy
-scikit-learn
-geopy
-xgboost
-reportlab
-gunicorn
-python-dotenv
+ flask
+ joblib
+ requests
+ pandas
+ numpy
+ scikit-learn
+ geopy
+ xgboost
+ reportlab
+ gunicorn
+ python-dotenv
+flask-sqlalchemy
+flask-migrate
