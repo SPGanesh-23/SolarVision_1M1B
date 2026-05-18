@@ -9,16 +9,16 @@
 
     /* Dark theme (default) */
     --bg-primary: #0a0e1a;
-    --bg-gradient: linear-gradient(135deg, #0a0e1a 0%, #1a1040 40%, #0d1b2a 70%, #0a0e1a 100%);
-    --bg-card: rgba(255, 255, 255, 0.04);
-    --bg-card-hover: rgba(255, 255, 255, 0.07);
-    --border-card: rgba(255, 255, 255, 0.08);
+    --bg-gradient: linear-gradient(160deg, #080c18 0%, #130e38 35%, #0b1624 65%, #080c18 100%);
+    --bg-card: rgba(255, 255, 255, 0.055);
+    --bg-card-hover: rgba(255, 255, 255, 0.09);
+    --border-card: rgba(255, 255, 255, 0.11);
     --text-primary: #f0f0f5;
     --text-secondary: #8892b0;
     --text-muted: #5a6380;
     --accent-solar: #ffb347;
     --accent-power: #64ffda;
-    --accent-energy: #7c4dff;
+    --accent-energy: #a78bfa;
     --accent-co2: #69f0ae;
     --accent-blue: #448aff;
     --error-bg: rgba(255, 82, 82, 0.15);
@@ -30,7 +30,7 @@
     --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
     --btn-gradient: linear-gradient(135deg, #ffb347 0%, #ff8c00 45%, #d97706 100%);
     --btn-hover: linear-gradient(135deg, #ffc473 0%, #ff9a2b 45%, #e0a04c 100%);
-    --blur-amount: 20px;
+    --blur-amount: 24px;
     --slider-track: rgba(255, 255, 255, 0.1);
     --slider-thumb: #ffb347;
 }
@@ -492,8 +492,11 @@ html[data-theme="light"] .theme-thumb-icon {
 }
 
 .section-title {
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
     margin-bottom: 28px;
     display: flex;
     align-items: center;
@@ -1274,7 +1277,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .metric-card {
-    padding: 28px 24px;
+    padding: 24px 20px;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -1286,14 +1289,14 @@ input[type="range"]::-moz-range-thumb {
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     border-radius: 20px 20px 0 0;
 }
 
-.solar-card::before { background: var(--accent-solar); }
-.power-card::before { background: var(--accent-power); }
-.energy-card::before { background: var(--accent-energy); }
-.co2-card::before { background: var(--accent-co2); }
+.solar-card::before { background: linear-gradient(90deg, var(--accent-solar), transparent); }
+.power-card::before { background: linear-gradient(90deg, var(--accent-power), transparent); }
+.energy-card::before { background: linear-gradient(90deg, var(--accent-energy), transparent); }
+.co2-card::before { background: linear-gradient(90deg, var(--accent-co2), transparent); }
 
 .metric-icon {
     font-size: 2rem;
@@ -1301,9 +1304,10 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .metric-value {
-    font-size: 2.2rem;
-    font-weight: 800;
+    font-size: 2.4rem;
+    font-weight: 700;
     line-height: 1.2;
+    letter-spacing: -0.03em;
     margin-bottom: 6px;
 }
 
@@ -1344,14 +1348,16 @@ input[type="range"]::-moz-range-thumb {
 
 .env-item {
     text-align: center;
-    padding: 16px;
+    padding: 20px 16px;
     background: var(--input-bg);
     border-radius: 14px;
-    transition: transform 0.3s ease;
+    border: 1px solid var(--border-card);
+    transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .env-item:hover {
     transform: scale(1.05);
+    border-color: var(--accent-co2);
 }
 
 .env-icon {
@@ -1362,8 +1368,9 @@ input[type="range"]::-moz-range-thumb {
 
 .env-value {
     display: block;
-    font-size: 1.6rem;
-    font-weight: 800;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     color: var(--accent-co2);
     margin-bottom: 4px;
 }
@@ -1396,7 +1403,8 @@ input[type="range"]::-moz-range-thumb {
 
 .peak-time {
     font-size: 2rem;
-    font-weight: 800;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     color: var(--accent-solar);
 }
 
@@ -1417,10 +1425,16 @@ input[type="range"]::-moz-range-thumb {
     grid-template-columns: 1fr;
     gap: 20px;
     margin-bottom: 24px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .chart-container {
     padding: 28px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .chart-container h3 {
@@ -1433,6 +1447,8 @@ input[type="range"]::-moz-range-thumb {
 .chart-container canvas {
     max-height: 320px;
     width: 100% !important;
+    height: auto !important;
+    display: block;
 }
 
 /* Daily Summary Table */
@@ -1580,6 +1596,17 @@ tr:hover td {
     .chart-container {
         padding: 20px 16px;
     }
+    .chart-panel {
+        padding: 20px 16px;
+    }
+    .chart-panel canvas,
+    .chart-container canvas {
+        max-height: 240px;
+    }
+    .chart-tabs {
+        gap: 4px;
+        padding: 4px;
+    }
     .metric-value {
         font-size: 1.8rem;
     }
@@ -1606,6 +1633,19 @@ tr:hover td {
 
     .peak-info {
         flex-direction: column;
+        gap: 4px;
+    }
+    .chart-panel,
+    .chart-container {
+        padding: 16px 12px;
+    }
+    .chart-panel canvas,
+    .chart-container canvas {
+        max-height: 200px;
+    }
+    .chart-tab {
+        font-size: 0.75rem;
+        padding: 8px 6px;
         gap: 4px;
     }
 }
@@ -2851,6 +2891,18 @@ tr:hover td {
 .chart-panel {
     padding: 28px;
     animation: fade-in 0.3s ease;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.chart-panel canvas {
+    width: 100% !important;
+    max-width: 100%;
+    height: auto !important;
+    max-height: 320px;
+    display: block;
 }
 
 /* ===================================
@@ -5015,4 +5067,129 @@ input[type="range"] {
 /* Environmental impact value counter entrance */
 .env-value.counting {
     animation: metric-pop 0.3s ease;
+}
+
+/* ===================================
+   COLLAPSIBLE ACCORDION SECTIONS
+   Wrap non-essential results blocks.
+   Expanded on desktop, collapsed on mobile.
+   =================================== */
+
+/* Toggle button — full-width clickable header bar */
+.accordion-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0 0 0 0;
+    cursor: pointer;
+    color: inherit;
+    font-family: inherit;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 8px;
+    transition: background 0.25s ease;
+}
+
+/* Keep the h3 styling untouched */
+.accordion-toggle h3 {
+    pointer-events: none;
+    margin-bottom: 0;
+}
+
+.accordion-toggle:hover {
+    background: rgba(255, 179, 71, 0.04);
+}
+
+.accordion-toggle:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent-solar);
+    border-radius: 8px;
+}
+
+/* Chevron indicator — pure CSS triangle */
+.accordion-chevron {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 179, 71, 0.08);
+    border: 1px solid rgba(255, 179, 71, 0.15);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.25s ease;
+    position: relative;
+}
+
+.accordion-chevron::after {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--accent-solar);
+    border-bottom: 2px solid var(--accent-solar);
+    transform: rotate(45deg) translate(-1px, -1px);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover the pill */
+.accordion-toggle:hover .accordion-chevron {
+    background: rgba(255, 179, 71, 0.14);
+}
+
+/* Collapsed state — chevron rotates to point right */
+.accordion-toggle[aria-expanded="false"] .accordion-chevron {
+    transform: rotate(-90deg);
+}
+
+/* Accordion body — animate via max-height + opacity */
+.accordion-body {
+    overflow: hidden;
+    max-height: 2000px;     /* large enough for any content */
+    opacity: 1;
+    transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.35s ease,
+                padding 0.35s ease;
+    padding-top: 16px;
+}
+
+/* Collapsed body */
+.accordion-body.collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    padding-top: 0;
+    pointer-events: none;
+}
+
+/* When inside a bill-calc-section, the toggle title shouldn't have the ::after line grow oddly */
+.accordion-section .bill-calc-title {
+    margin-bottom: 0;
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .accordion-chevron {
+    background: rgba(230, 147, 14, 0.08);
+    border-color: rgba(230, 147, 14, 0.18);
+}
+
+[data-theme="light"] .accordion-toggle:hover {
+    background: rgba(230, 147, 14, 0.04);
+}
+
+[data-theme="light"] .accordion-toggle:hover .accordion-chevron {
+    background: rgba(230, 147, 14, 0.14);
+}
+
+/* ─── Responsive: auto-collapse on mobile ─── */
+@media (max-width: 768px) {
+    .accordion-body.mobile-auto-collapsed {
+        max-height: 0 !important;
+        opacity: 0;
+        padding-top: 0;
+        pointer-events: none;
+    }
 }

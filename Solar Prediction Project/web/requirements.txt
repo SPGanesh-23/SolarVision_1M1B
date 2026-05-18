@@ -9,3 +9,5 @@ xgboost
 reportlab
 gunicorn
 python-dotenv
+flask-sqlalchemy
+flask-migrate
